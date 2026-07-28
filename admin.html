@@ -10,204 +10,266 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <style>
-    .admin-login {
-      max-width: 360px;
-      margin: 3rem auto;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-    }
-    .admin-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 1.25rem;
-      align-items: center;
-    }
+    .admin-login { max-width: 360px; margin: 3rem auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+    .admin-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; align-items: center; }
     .admin-toolbar .spacer { flex: 1; }
+    .tabs { display: flex; gap: 0.35rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    .tab { background: transparent; border: none; color: var(--text-muted); padding: 0.5rem 0.9rem; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; border-radius: 6px; }
+    .tab.active { color: var(--accent); background: var(--accent-soft); }
+    .product-form { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
+    .product-form h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 1rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 540px) { .form-row { grid-template-columns: 1fr; } }
+    .check-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.95rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .check-row input { width: auto; accent-color: var(--accent); }
+    .inactive-badge { font-size: 0.65rem; color: var(--text-muted); border: 1px solid var(--border); padding: 0.15rem 0.4rem; border-radius: 4px; margin-left: 0.35rem; }
   </style>
 </head>
 <body>
   <header class="header">
     <div class="container header-inner">
-      <a href="index.html" class="logo">
-        <span class="logo-mark">F</span>
-        FLUX <span>ROOT</span>
-      </a>
-      <nav class="nav">
-        <a href="index.html">Shop</a>
-        <a href="admin.html" class="active">Admin</a>
-      </nav>
+      <a href="index.html" class="logo"><span class="logo-mark">F</span> FLUX <span>ROOT</span></a>
+      <nav class="nav"><a href="index.html">Shop</a><a href="admin.html" class="active">Admin</a></nav>
     </div>
   </header>
-
   <main class="container">
     <h1 class="page-title">Admin</h1>
-    <p class="page-sub">Manage orders — mark completed after you deliver the service.</p>
+    <p class="page-sub">Orders, services & categories — changes go live instantly.</p>
     <div id="admin-root"></div>
   </main>
-
-  <footer class="footer">
-    <div class="container">
-      <p>© 2026 FLUX ROOT SERVICES</p>
-    </div>
-  </footer>
-
+  <footer class="footer"><div class="container"><p>© 2026 FLUX ROOT SERVICES</p></div></footer>
   <script>
     const SECRET_KEY = "flux_admin_secret";
+    let currentTab = "orders";
+    let orderFilter = "pending";
+    let editingId = null;
 
-    function getSecret() {
-      return sessionStorage.getItem(SECRET_KEY) || "";
+    function getSecret() { return sessionStorage.getItem(SECRET_KEY) || ""; }
+    function setSecret(s) { sessionStorage.setItem(SECRET_KEY, s); }
+    function clearSecret() { sessionStorage.removeItem(SECRET_KEY); }
+    function headers() {
+      return { "Content-Type": "application/json", "x-admin-secret": getSecret() };
     }
 
-    function setSecret(s) {
-      sessionStorage.setItem(SECRET_KEY, s);
-    }
-
-    function clearSecret() {
-      sessionStorage.removeItem(SECRET_KEY);
-    }
-
-    function render() {
+    function renderShell() {
       const root = document.getElementById("admin-root");
       if (!getSecret()) {
-        root.innerHTML = `
-          <div class="admin-login">
-            <div class="form-group">
-              <label for="secret">Admin password</label>
-              <input type="password" id="secret" placeholder="ADMIN_SECRET" />
-            </div>
-            <button class="btn btn-block" id="login-btn">Enter</button>
-            <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)">
-              Set ADMIN_SECRET in Render environment variables.
-            </p>
-          </div>`;
+        root.innerHTML = `<div class="admin-login">
+          <div class="form-group"><label for="secret">Admin password</label>
+          <input type="password" id="secret" placeholder="ADMIN_SECRET" /></div>
+          <button class="btn btn-block" id="login-btn">Enter</button>
+          <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)">Set ADMIN_SECRET in Render.</p></div>`;
         document.getElementById("login-btn").onclick = () => {
           const v = document.getElementById("secret").value.trim();
-          if (!v) return;
-          setSecret(v);
-          loadOrders("pending");
+          if (!v) return; setSecret(v); renderShell();
         };
         document.getElementById("secret").addEventListener("keydown", (e) => {
           if (e.key === "Enter") document.getElementById("login-btn").click();
         });
         return;
       }
-      loadOrders("pending");
+      root.innerHTML = `<div class="tabs">
+        <button class="tab ${currentTab==="orders"?"active":""}" data-tab="orders">Orders</button>
+        <button class="tab ${currentTab==="services"?"active":""}" data-tab="services">Services</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-outline btn-sm" onclick="clearSecret();renderShell()">Logout</button>
+      </div><div id="tab-body"></div>`;
+      root.querySelectorAll(".tab").forEach((btn) => {
+        btn.onclick = () => { currentTab = btn.dataset.tab; editingId = null; renderShell(); };
+      });
+      if (currentTab === "orders") loadOrders(orderFilter); else loadProducts();
     }
 
     async function loadOrders(filter) {
-      const root = document.getElementById("admin-root");
-      root.innerHTML = `<p style="color:var(--text-muted)">Loading…</p>`;
-
+      orderFilter = filter || orderFilter;
+      const body = document.getElementById("tab-body");
+      body.innerHTML = `<p style="color:var(--text-muted)">Loading…</p>`;
       try {
-        const q = filter && filter !== "all" ? `?status=${filter}` : "";
-        const res = await fetch(`/api/admin/orders${q}`, {
-          headers: { "x-admin-secret": getSecret() }
-        });
+        const q = orderFilter !== "all" ? `?status=${orderFilter}` : "";
+        const res = await fetch(`/api/admin/orders${q}`, { headers: headers() });
         const data = await res.json().catch(() => ({}));
-        if (res.status === 401) {
-          clearSecret();
-          render();
-          return;
-        }
+        if (res.status === 401) { clearSecret(); renderShell(); return; }
         if (!res.ok || !data.ok) {
-          root.innerHTML = `<div class="empty"><h3>Error</h3><p>${data.error || "Failed to load"}</p>
-            <button class="btn" style="margin-top:1rem" onclick="clearSecret();render()">Re-login</button></div>`;
+          body.innerHTML = `<div class="empty"><h3>Error</h3><p>${data.error||"Failed"}</p></div>`;
           return;
         }
-        showList(data.orders || [], filter || "pending");
+        showOrders(data.orders || []);
       } catch (e) {
-        root.innerHTML = `<div class="empty"><h3>Network error</h3><p>${e.message}</p></div>`;
+        body.innerHTML = `<div class="empty"><h3>Network error</h3><p>${e.message}</p></div>`;
       }
     }
 
-    function showList(orders, filter) {
-      const root = document.getElementById("admin-root");
+    function showOrders(orders) {
+      const body = document.getElementById("tab-body");
       const filters = ["pending", "completed", "all"];
-      const toolbar = `
-        <div class="admin-toolbar">
-          ${filters
-            .map(
-              (f) =>
-                `<button class="cat-btn ${filter === f ? "active" : ""}" onclick="loadOrders('${f}')">${f}</button>`
-            )
-            .join("")}
-          <span class="spacer"></span>
-          <button class="btn btn-outline btn-sm" onclick="loadOrders('${filter}')">Refresh</button>
-          <button class="btn btn-outline btn-sm" onclick="clearSecret();render()">Logout</button>
-        </div>`;
-
-      if (orders.length === 0) {
-        root.innerHTML =
-          toolbar +
-          `<div class="empty"><h3>No orders</h3><p>Nothing in “${filter}”.</p></div>`;
+      const toolbar = `<div class="admin-toolbar">${filters.map((f) =>
+        `<button class="cat-btn ${orderFilter===f?"active":""}" onclick="loadOrders('${f}')">${f}</button>`
+      ).join("")}<span class="spacer"></span>
+      <button class="btn btn-outline btn-sm" onclick="loadOrders('${orderFilter}')">Refresh</button></div>`;
+      if (!orders.length) {
+        body.innerHTML = toolbar + `<div class="empty"><h3>No orders</h3><p>Nothing in “${orderFilter}”.</p></div>`;
         return;
       }
-
-      const cards = orders
-        .map((o) => {
-          const date = new Date(o.date);
-          const dateStr = date.toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short"
-          });
-          const itemsStr = (o.items || []).map((i) => `${i.name} × ${i.qty}`).join(", ");
-          const isPending = o.status === "pending";
-          return `
-            <div class="order-card">
-              <div class="order-header">
-                <div>
-                  <div class="order-id">${o.id}</div>
-                  <div class="order-date">${dateStr}</div>
-                </div>
-                <span class="order-status ${isPending ? "pending" : "completed"}">${o.status.toUpperCase()}</span>
-              </div>
-              <p class="order-items-line">${itemsStr}</p>
-              <p class="order-total">₱${Number(o.total).toLocaleString()} PHP</p>
-              <p class="order-meta">Telegram: @${o.telegramUsername || "—"}</p>
-              <p class="order-meta">Device: ${o.deviceName || "—"}</p>
-              ${o.buildNumber ? `<p class="order-meta">Build: ${o.buildNumber}</p>` : ""}
-              ${o.ref ? `<p class="order-meta">Ref: ${o.ref}</p>` : ""}
-              ${o.note ? `<p class="order-meta">Note: ${o.note}</p>` : ""}
-              <div style="display:flex;gap:0.5rem;margin-top:0.85rem;flex-wrap:wrap">
-                ${
-                  isPending
-                    ? `<button class="btn btn-sm" onclick="setStatus('${o.id}','completed')">Mark completed</button>`
-                    : `<button class="btn btn-outline btn-sm" onclick="setStatus('${o.id}','pending')">Reopen pending</button>`
-                }
-                <a class="btn btn-outline btn-sm" href="https://t.me/${o.telegramUsername || ""}" target="_blank" rel="noopener">Telegram</a>
-              </div>
-            </div>`;
-        })
-        .join("");
-
-      root.innerHTML = toolbar + cards;
+      body.innerHTML = toolbar + orders.map((o) => {
+        const dateStr = new Date(o.date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+        const itemsStr = (o.items||[]).map((i) => `${i.name} × ${i.qty}`).join(", ");
+        const isPending = o.status === "pending";
+        return `<div class="order-card"><div class="order-header"><div>
+          <div class="order-id">${esc(o.id)}</div><div class="order-date">${dateStr}</div></div>
+          <span class="order-status ${isPending?"pending":"completed"}">${(o.status||"").toUpperCase()}</span></div>
+          <p class="order-items-line">${esc(itemsStr)}</p>
+          <p class="order-total">₱${Number(o.total).toLocaleString()} PHP</p>
+          <p class="order-meta">Telegram: @${esc(o.telegramUsername||"—")}</p>
+          <p class="order-meta">Device: ${esc(o.deviceName||"—")}</p>
+          ${o.buildNumber?`<p class="order-meta">Build: ${esc(o.buildNumber)}</p>`:""}
+          ${o.ref?`<p class="order-meta">Ref: ${esc(o.ref)}</p>`:""}
+          ${o.note?`<p class="order-meta">Note: ${esc(o.note)}</p>`:""}
+          <div style="display:flex;gap:0.5rem;margin-top:0.85rem;flex-wrap:wrap">
+          ${isPending?`<button class="btn btn-sm" onclick="setStatus('${o.id}','completed')">Mark completed</button>`
+            :`<button class="btn btn-outline btn-sm" onclick="setStatus('${o.id}','pending')">Reopen</button>`}
+          <a class="btn btn-outline btn-sm" href="https://t.me/${esc(o.telegramUsername||"")}" target="_blank" rel="noopener">Telegram</a>
+          </div></div>`;
+      }).join("");
     }
 
     async function setStatus(id, status) {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+        method: "PATCH", headers: headers(), body: JSON.stringify({ status })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) { alert(data.error || "Update failed"); return; }
+      loadOrders(orderFilter);
+    }
+
+    async function loadProducts() {
+      const body = document.getElementById("tab-body");
+      body.innerHTML = `<p style="color:var(--text-muted)">Loading…</p>`;
       try {
-        const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-secret": getSecret()
-          },
-          body: JSON.stringify({ status })
-        });
+        const res = await fetch("/api/admin/products", { headers: headers() });
         const data = await res.json().catch(() => ({}));
+        if (res.status === 401) { clearSecret(); renderShell(); return; }
         if (!res.ok || !data.ok) {
-          alert(data.error || "Update failed");
+          body.innerHTML = `<div class="empty"><h3>Error</h3><p>${data.error||"Failed"}</p></div>`;
           return;
         }
-        loadOrders("pending");
+        showProducts(data.products || []);
       } catch (e) {
-        alert(e.message);
+        body.innerHTML = `<div class="empty"><h3>Network error</h3><p>${e.message}</p></div>`;
       }
     }
 
-    document.addEventListener("DOMContentLoaded", render);
+    function showProducts(products) {
+      const body = document.getElementById("tab-body");
+      const categories = [...new Set(products.map((p) => p.category).filter(Boolean))].sort();
+      const form = `<div class="product-form">
+        <h3>${editingId ? "Edit service" : "Add new service"}</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Name *</label><input type="text" id="p-name" placeholder="e.g. FRP REMOVE" /></div>
+          <div class="form-group"><label>Category * (type new to create)</label>
+            <input type="text" id="p-category" list="cat-list" placeholder="e.g. FRP" />
+            <datalist id="cat-list">${categories.map((c) => `<option value="${esc(c)}">`).join("")}</datalist>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Price (PHP) *</label><input type="number" id="p-price" min="0" step="1" placeholder="150" /></div>
+          <div class="form-group"><label>Sort order</label><input type="number" id="p-sort" value="0" /></div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="p-desc" rows="2" placeholder="What the customer gets"></textarea></div>
+        <div class="form-group"><label>Tags (comma separated)</label><input type="text" id="p-tags" placeholder="frp, google" /></div>
+        <div class="check-row"><input type="checkbox" id="p-build" /><label for="p-build">Requires build number at checkout</label></div>
+        <div class="check-row"><input type="checkbox" id="p-active" checked /><label for="p-active">Active (visible in shop)</label></div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn" id="p-save">${editingId ? "Save changes" : "Add service"}</button>
+          ${editingId ? `<button class="btn btn-outline" id="p-cancel">Cancel</button>` : ""}
+        </div></div>`;
+
+      const list = !products.length
+        ? `<div class="empty"><h3>No services</h3><p>Add your first service above.</p></div>`
+        : products.map((p) => `<div class="order-card">
+            <div class="order-header"><div>
+              <div class="order-id">${esc(p.name)}${!p.active?'<span class="inactive-badge">HIDDEN</span>':''}</div>
+              <div class="order-date">${esc(p.category)} · ${esc(p.id)}</div></div>
+              <span class="order-total" style="margin:0">₱${Number(p.price).toLocaleString()}</span></div>
+            <p class="order-items-line">${esc(p.description||"—")}</p>
+            <p class="order-meta">Build required: ${p.requiresBuild?"Yes":"No"} · Sort: ${p.sortOrder||0}</p>
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap">
+              <button class="btn btn-sm" onclick="startEdit('${p.id}')">Edit</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleActive('${p.id}', ${!p.active})">${p.active?"Hide":"Show"}</button>
+              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="deleteProduct('${p.id}')">Delete</button>
+            </div></div>`).join("");
+
+      body.innerHTML = form + list;
+      if (editingId) {
+        const p = products.find((x) => x.id === editingId);
+        if (p) {
+          document.getElementById("p-name").value = p.name;
+          document.getElementById("p-category").value = p.category;
+          document.getElementById("p-price").value = p.price;
+          document.getElementById("p-sort").value = p.sortOrder || 0;
+          document.getElementById("p-desc").value = p.description || "";
+          document.getElementById("p-tags").value = (p.tags || []).join(", ");
+          document.getElementById("p-build").checked = !!p.requiresBuild;
+          document.getElementById("p-active").checked = p.active !== false;
+        }
+      }
+      document.getElementById("p-save").onclick = saveProduct;
+      const cancel = document.getElementById("p-cancel");
+      if (cancel) cancel.onclick = () => { editingId = null; loadProducts(); };
+    }
+
+    function startEdit(id) { editingId = id; loadProducts(); }
+
+    async function saveProduct() {
+      const payload = {
+        name: document.getElementById("p-name").value.trim(),
+        category: document.getElementById("p-category").value.trim(),
+        price: Number(document.getElementById("p-price").value),
+        sortOrder: Number(document.getElementById("p-sort").value) || 0,
+        description: document.getElementById("p-desc").value.trim(),
+        tags: document.getElementById("p-tags").value.split(",").map((t) => t.trim()).filter(Boolean),
+        requiresBuild: document.getElementById("p-build").checked,
+        active: document.getElementById("p-active").checked
+      };
+      if (!payload.name || !payload.category || !Number.isFinite(payload.price)) {
+        alert("Name, category, and price are required."); return;
+      }
+      const url = editingId ? `/api/admin/products/${encodeURIComponent(editingId)}` : "/api/admin/products";
+      const method = editingId ? "PUT" : "POST";
+      const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) { alert(data.error || "Save failed"); return; }
+      editingId = null; loadProducts();
+    }
+
+    async function toggleActive(id, active) {
+      const res = await fetch("/api/admin/products", { headers: headers() });
+      const data = await res.json().catch(() => ({}));
+      const p = (data.products || []).find((x) => x.id === id);
+      if (!p) return;
+      const put = await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
+        method: "PUT", headers: headers(), body: JSON.stringify({ ...p, active })
+      });
+      const putData = await put.json().catch(() => ({}));
+      if (!put.ok || !putData.ok) { alert(putData.error || "Update failed"); return; }
+      loadProducts();
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm("Delete this service permanently?")) return;
+      const res = await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
+        method: "DELETE", headers: headers()
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) { alert(data.error || "Delete failed"); return; }
+      if (editingId === id) editingId = null;
+      loadProducts();
+    }
+
+    function esc(s) {
+      return String(s || "").replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""");
+    }
+
+    document.addEventListener("DOMContentLoaded", renderShell);
   </script>
 </body>
 </html>
