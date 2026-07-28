@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Checkout — FLUX ROOT SERVICES</title>
-  <meta name="theme-color" content="#08090b" />
+  <meta name="theme-color" content="#0a0908" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -30,7 +30,7 @@
 
   <main class="container">
     <h1 class="page-title">Checkout</h1>
-    <p class="page-sub">Pay via Maya QR, then confirm your order.</p>
+    <p class="page-sub">Pay via Maya QR, fill required details, then confirm.</p>
     <div id="checkout-content"></div>
   </main>
 
@@ -43,9 +43,15 @@
   <script src="js/products.js"></script>
   <script src="js/cart.js"></script>
   <script>
-    // === CONFIG — replace with your real details ===
-    const TELEGRAM_LINK = "https://t.me/YOUR_TELEGRAM";
+    const TELEGRAM_LINK = "https://t.me/alexdevyuhhh";
     const MAYA_QR_SRC = "assets/maya-qr.png";
+
+    function cartNeedsBuild() {
+      return getCart().some((item) => {
+        const p = PRODUCTS.find((x) => x.id === item.id);
+        return p && p.requiresBuild;
+      });
+    }
 
     function renderCheckout() {
       const wrap = document.getElementById("checkout-content");
@@ -54,15 +60,16 @@
       if (cart.length === 0) {
         wrap.innerHTML = `
           <div class="empty">
-            <div class="empty-icon">🧾</div>
+            <div class="empty-icon">—</div>
             <h3>Nothing to checkout</h3>
             <p>Your cart is empty.</p>
-            <a href="index.html" class="btn" style="margin-top:1.25rem;display:inline-flex">Browse Services</a>
+            <a href="index.html" class="btn" style="margin-top:1.15rem;display:inline-flex">Browse Services</a>
           </div>`;
         return;
       }
 
       const total = getCartTotal();
+      const needsBuild = cartNeedsBuild();
       const itemsList = cart
         .map((item) => {
           const p = PRODUCTS.find((x) => x.id === item.id);
@@ -79,29 +86,44 @@
               <img id="maya-qr" src="${MAYA_QR_SRC}" alt="Maya QR Code"
                    onerror="this.style.display='none'; document.getElementById('qr-fallback').style.display='flex';" />
               <div id="qr-fallback" class="qr-placeholder" style="display:none">
-                Place your Maya QR image at<br><code>assets/maya-qr.png</code>
+                Place your Maya QR at<br><code>assets/maya-qr.png</code>
               </div>
               <p class="qr-amount">₱${total.toLocaleString()}</p>
             </div>
-            <p class="qr-note">Open the Maya app → Scan this QR → Pay the exact amount shown.</p>
+            <p class="qr-note">Open Maya → Scan QR → Pay the exact amount.</p>
           </div>
 
           <div class="checkout-card">
-            <h3><span class="step-num">2</span> Order Summary</h3>
+            <h3><span class="step-num">2</span> Your details</h3>
             <ul class="order-items">${itemsList}</ul>
-            <div class="cart-summary-row total" style="margin-top:0.85rem;padding-top:0.85rem;border-top:1px solid var(--border)">
+            <div class="cart-summary-row total" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
               <span>Total</span>
               <span>₱${total.toLocaleString()} PHP</span>
             </div>
 
-            <div style="margin-top:1.35rem">
+            <div style="margin-top:1.25rem">
+              <div class="form-group">
+                <label for="tgUser">Telegram username <span class="req">*</span></label>
+                <input type="text" id="tgUser" placeholder="@username" autocomplete="off" />
+                <div class="form-error" id="err-tgUser">Required</div>
+              </div>
+              <div class="form-group">
+                <label for="device">Device name <span class="req">*</span></label>
+                <input type="text" id="device" placeholder="e.g. Infinix Hot 40, Tecno Spark 20" />
+                <div class="form-error" id="err-device">Required</div>
+              </div>
+              <div class="form-group" id="build-group" style="${needsBuild ? "" : "display:none"}">
+                <label for="build">Build number <span class="req">*</span></label>
+                <input type="text" id="build" placeholder="Settings → About phone → Build number" />
+                <div class="form-error" id="err-build">Required for Root / Transsion firmware</div>
+              </div>
               <div class="form-group">
                 <label for="ref">Payment reference (optional)</label>
                 <input type="text" id="ref" placeholder="Maya ref or last 4 digits" />
               </div>
               <div class="form-group">
-                <label for="note">Device / notes (recommended)</label>
-                <textarea id="note" rows="2" placeholder="Phone model, Android version, etc."></textarea>
+                <label for="note">Extra notes (optional)</label>
+                <textarea id="note" rows="2" placeholder="Anything else we should know"></textarea>
               </div>
               <button class="btn btn-lg btn-block" id="confirm-btn">I've Paid — Create Order</button>
             </div>
@@ -110,18 +132,52 @@
 
         <div class="checkout-help">
           <h3>After payment</h3>
-          <p>
-            Click the button above to save your order. You will be notified on Telegram automatically
-            when the bot is configured.
-          </p>
-          <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-outline btn-block">Open Telegram</a>
+          <p>Confirm your order and we receive it on Telegram automatically.</p>
+          <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-outline btn-block">Message @alexdevyuhhh</a>
         </div>
       `;
 
       document.getElementById("confirm-btn").addEventListener("click", placeOrder);
     }
 
+    function validate() {
+      let ok = true;
+      const tgUser = document.getElementById("tgUser");
+      const device = document.getElementById("device");
+      const build = document.getElementById("build");
+      const needsBuild = cartNeedsBuild();
+
+      [["tgUser", tgUser], ["device", device]].forEach(([id, el]) => {
+        const err = document.getElementById("err-" + id);
+        const val = el.value.trim();
+        if (!val) {
+          el.classList.add("invalid");
+          err.classList.add("show");
+          ok = false;
+        } else {
+          el.classList.remove("invalid");
+          err.classList.remove("show");
+        }
+      });
+
+      if (needsBuild) {
+        const err = document.getElementById("err-build");
+        if (!build.value.trim()) {
+          build.classList.add("invalid");
+          err.classList.add("show");
+          ok = false;
+        } else {
+          build.classList.remove("invalid");
+          err.classList.remove("show");
+        }
+      }
+
+      return ok;
+    }
+
     async function placeOrder() {
+      if (!validate()) return;
+
       const btn = document.getElementById("confirm-btn");
       if (btn) {
         btn.disabled = true;
@@ -132,6 +188,9 @@
       if (cart.length === 0) return;
 
       const total = getCartTotal();
+      const telegramUsername = document.getElementById("tgUser").value.trim().replace(/^@/, "");
+      const deviceName = document.getElementById("device").value.trim();
+      const buildNumber = (document.getElementById("build")?.value || "").trim() || null;
       const ref = document.getElementById("ref").value.trim();
       const note = document.getElementById("note").value.trim();
       const orderId = generateOrderId();
@@ -151,13 +210,16 @@
         date: new Date().toISOString(),
         items,
         total,
+        telegramUsername,
+        deviceName,
+        buildNumber,
         ref: ref || null,
         note: note || null,
         status: "pending"
       };
 
-      // Notify your Telegram bot (server-side — token stays secret)
       let notifyOk = false;
+      let notifyDetail = "";
       try {
         const res = await fetch("/api/order", {
           method: "POST",
@@ -166,36 +228,27 @@
             orderId,
             total,
             items,
+            telegramUsername,
+            deviceName,
+            buildNumber,
             ref: ref || null,
             note: note || null
           })
         });
         const data = await res.json().catch(() => ({}));
         notifyOk = res.ok && data.ok;
+        if (!notifyOk) notifyDetail = data.error || data.detail || ("HTTP " + res.status);
       } catch (e) {
         console.warn("Telegram notify failed:", e);
+        notifyDetail = "Network / server offline";
       }
 
       saveOrder(order);
       clearCart();
 
-      const lines = [
-        `Order ${orderId}`,
-        `Total: ₱${total.toLocaleString()}`,
-        ref ? `Ref: ${ref}` : null,
-        note ? `Note: ${note}` : null,
-        "",
-        ...items.map((i) => `• ${i.name} × ${i.qty}`)
-      ].filter(Boolean);
-
-      const tgText = encodeURIComponent(lines.join("\n"));
-      const tgUrl = TELEGRAM_LINK.includes("?")
-        ? TELEGRAM_LINK
-        : `${TELEGRAM_LINK}?text=${tgText}`;
-
       const notifyMsg = notifyOk
-        ? "We were notified automatically. You can still message us on Telegram if needed."
-        : "Send this Order ID and payment proof on Telegram so we can process your service.";
+        ? "Order sent to our Telegram. We’ll process it shortly."
+        : "Order saved on this device. Message us on Telegram with your Order ID. (" + notifyDetail + ")";
 
       document.getElementById("checkout-content").innerHTML = `
         <div class="success-box">
@@ -204,13 +257,13 @@
           <div class="order-id-display">${orderId}</div>
           <p>${notifyMsg}</p>
           <div class="success-actions">
-            <a href="${tgUrl}" target="_blank" rel="noopener" class="btn btn-lg btn-block">Message on Telegram</a>
+            <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-lg btn-block">Message @alexdevyuhhh</a>
             <a href="orders.html" class="btn btn-outline btn-block">View Order History</a>
             <a href="index.html" class="btn btn-outline btn-block">Back to Shop</a>
           </div>
         </div>
       `;
-      showToast(notifyOk ? "Order sent to Telegram!" : "Order saved!");
+      showToast(notifyOk ? "Sent to Telegram" : "Order saved");
     }
 
     document.addEventListener("DOMContentLoaded", renderCheckout);
