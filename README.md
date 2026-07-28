@@ -1,6 +1,6 @@
-# WYN'S SARI SARI STORE
+# FLUX ROOT SERVICES
 
-Simple digital services storefront (dark theme) — Root, Unlock Bootloader, Firmware, etc.
+Professional digital phone services storefront — Root, Unlock Bootloader, Firmware, and more.
 
 **Pay via Maya QR PH · Delivery via Telegram**
 
@@ -12,16 +12,6 @@ Simple digital services storefront (dark theme) — Root, Unlock Bootloader, Fir
 - Order history (saved on the device)
 - Mobile-friendly dark UI
 - Ready for Render (static site)
-
-## Quick start (local)
-
-Just open `index.html` in a browser, or run a static server:
-
-```bash
-npx serve .
-# or
-python -m http.server 3000
-```
 
 ## Deploy on Render
 
@@ -42,8 +32,6 @@ Save your Maya / QR PH image as:
 assets/maya-qr.png
 ```
 
-It will appear automatically on the checkout page.
-
 ### 2. Telegram link
 
 In `checkout.html` find:
@@ -52,34 +40,11 @@ In `checkout.html` find:
 const TELEGRAM_LINK = "https://t.me/YOUR_TELEGRAM";
 ```
 
-Replace with your real username, e.g. `https://t.me/wynstore`.
+Replace with your real username.
 
 ### 3. Add more products
 
-Edit `js/products.js`:
-
-```js
-{
-  id: "new-service",
-  name: "NEW SERVICE",
-  price: 200,
-  category: "Rooting",
-  description: "Short description...",
-  tags: ["keyword1", "keyword2"]
-}
-```
-
-Also add the new category name to the `CATEGORIES` array if needed.
-
-## How the flow works
-
-1. Customer browses / searches / adds to cart.
-2. Checkout → scans your Maya QR and pays the shown amount.
-3. Clicks **I've Paid — Create Order** → gets an Order ID (saved in browser).
-4. Messages you on Telegram with the Order ID + optional note/device info.
-5. You deliver the service manually on Telegram.
-
-Orders are stored only in the customer's browser (localStorage). No backend required.
+Edit `js/products.js`.
 
 ## Tech
 

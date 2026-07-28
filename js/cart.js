@@ -1,5 +1,5 @@
-const CART_KEY = "wyn_cart";
-const ORDERS_KEY = "wyn_orders";
+const CART_KEY = "flux_cart";
+const ORDERS_KEY = "flux_orders";
 
 function getCart() {
   try {
@@ -87,7 +87,7 @@ function saveOrder(order) {
 function generateOrderId() {
   const t = Date.now().toString(36).toUpperCase();
   const r = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `WYN-${t}-${r}`;
+  return `FLUX-${t}-${r}`;
 }
 
 function showToast(msg) {
