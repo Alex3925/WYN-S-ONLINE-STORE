@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Checkout — WYN'S SARI SARI STORE</title>
+  <meta name="theme-color" content="#08090b" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,7 +13,10 @@
 <body>
   <header class="header">
     <div class="container header-inner">
-      <a href="index.html" class="logo">WYN'S <span>SARI SARI</span></a>
+      <a href="index.html" class="logo">
+        <span class="logo-mark">W</span>
+        WYN'S <span>SARI SARI</span>
+      </a>
       <nav class="nav">
         <a href="index.html">Shop</a>
         <a href="orders.html">Orders</a>
@@ -26,6 +30,7 @@
 
   <main class="container">
     <h1 class="page-title">Checkout</h1>
+    <p class="page-sub">Pay via Maya QR, then confirm your order.</p>
     <div id="checkout-content"></div>
   </main>
 
@@ -39,8 +44,7 @@
   <script src="js/cart.js"></script>
   <script>
     // === CONFIG — replace with your real details ===
-    const TELEGRAM_LINK = "https://t.me/alexdevyuhhh"; // e.g. https://t.me/yourusername
-    // Put your Maya QR image in assets/maya-qr.png and it will show automatically
+    const TELEGRAM_LINK = "https://t.me/YOUR_TELEGRAM";
     const MAYA_QR_SRC = "assets/maya-qr.png";
 
     function renderCheckout() {
@@ -50,9 +54,10 @@
       if (cart.length === 0) {
         wrap.innerHTML = `
           <div class="empty">
+            <div class="empty-icon">🧾</div>
             <h3>Nothing to checkout</h3>
             <p>Your cart is empty.</p>
-            <a href="index.html" class="btn" style="margin-top:1rem;display:inline-flex">Go to Shop</a>
+            <a href="index.html" class="btn" style="margin-top:1.25rem;display:inline-flex">Browse Services</a>
           </div>`;
         return;
       }
@@ -69,49 +74,47 @@
       wrap.innerHTML = `
         <div class="checkout-grid">
           <div class="checkout-card">
-            <h3>1. Scan & Pay with Maya (QR PH)</h3>
+            <h3><span class="step-num">1</span> Scan &amp; Pay with Maya</h3>
             <div class="qr-box">
               <img id="maya-qr" src="${MAYA_QR_SRC}" alt="Maya QR Code"
                    onerror="this.style.display='none'; document.getElementById('qr-fallback').style.display='flex';" />
               <div id="qr-fallback" class="qr-placeholder" style="display:none">
                 Place your Maya QR image at<br><code>assets/maya-qr.png</code>
               </div>
-              <p style="color:#111;font-weight:600;font-size:0.95rem">Amount: ₱${total.toLocaleString()}</p>
+              <p class="qr-amount">₱${total.toLocaleString()}</p>
             </div>
-            <p class="qr-note">Open Maya app → Scan QR → Pay the exact amount shown above.</p>
+            <p class="qr-note">Open the Maya app → Scan this QR → Pay the exact amount shown.</p>
           </div>
 
           <div class="checkout-card">
-            <h3>2. Order Summary</h3>
+            <h3><span class="step-num">2</span> Order Summary</h3>
             <ul class="order-items">${itemsList}</ul>
-            <div class="cart-summary-row total" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+            <div class="cart-summary-row total" style="margin-top:0.85rem;padding-top:0.85rem;border-top:1px solid var(--border)">
               <span>Total</span>
               <span>₱${total.toLocaleString()} PHP</span>
             </div>
 
-            <div style="margin-top:1.25rem">
+            <div style="margin-top:1.35rem">
               <div class="form-group">
-                <label for="ref">Payment reference / receipt # (optional)</label>
-                <input type="text" id="ref" placeholder="e.g. Maya ref or last 4 digits" />
+                <label for="ref">Payment reference (optional)</label>
+                <input type="text" id="ref" placeholder="Maya ref or last 4 digits" />
               </div>
               <div class="form-group">
-                <label for="note">Device / notes for us (recommended)</label>
+                <label for="note">Device / notes (recommended)</label>
                 <textarea id="note" rows="2" placeholder="Phone model, Android version, etc."></textarea>
               </div>
-              <button class="btn btn-block" id="confirm-btn">I've Paid — Create Order</button>
+              <button class="btn btn-lg btn-block" id="confirm-btn">I've Paid — Create Order</button>
             </div>
           </div>
         </div>
 
-        <div class="checkout-card" style="margin-bottom:2rem">
-          <h3>3. After payment</h3>
-          <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:0.75rem">
-            Click the button above to save your order. Then message us on Telegram with your <strong>Order ID</strong>
-            so we can deliver the service instantly.
+        <div class="checkout-help">
+          <h3>After payment</h3>
+          <p>
+            Click the button above to save your order. Then message us on Telegram with your
+            <strong>Order ID</strong> so we can deliver the service.
           </p>
-          <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-outline btn-block">
-            Open Telegram
-          </a>
+          <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-outline btn-block">Open Telegram</a>
         </div>
       `;
 
@@ -150,7 +153,6 @@
       saveOrder(order);
       clearCart();
 
-      // Prepare Telegram message text
       const lines = [
         `Order ${orderId}`,
         `Total: ₱${total.toLocaleString()}`,
@@ -166,15 +168,18 @@
         : `${TELEGRAM_LINK}?text=${tgText}`;
 
       document.getElementById("checkout-content").innerHTML = `
-        <div class="empty" style="max-width:480px;margin:0 auto">
-          <div class="badge" style="margin-bottom:1rem">Order created</div>
-          <h3 style="margin-bottom:0.5rem">Order ID: ${orderId}</h3>
-          <p style="margin-bottom:1.25rem">
-            Send this Order ID + payment proof to us on Telegram so we can process and deliver your service.
+        <div class="success-box">
+          <div class="success-icon">✓</div>
+          <h3>Order created</h3>
+          <div class="order-id-display">${orderId}</div>
+          <p>
+            Send this Order ID and payment proof on Telegram so we can process and deliver your service.
           </p>
-          <a href="${tgUrl}" target="_blank" rel="noopener" class="btn btn-block">Message on Telegram with Order</a>
-          <a href="orders.html" class="btn btn-outline btn-block" style="margin-top:0.6rem">View Order History</a>
-          <a href="index.html" class="btn btn-outline btn-block" style="margin-top:0.6rem">Back to Shop</a>
+          <div class="success-actions">
+            <a href="${tgUrl}" target="_blank" rel="noopener" class="btn btn-lg btn-block">Message on Telegram</a>
+            <a href="orders.html" class="btn btn-outline btn-block">View Order History</a>
+            <a href="index.html" class="btn btn-outline btn-block">Back to Shop</a>
+          </div>
         </div>
       `;
       showToast("Order saved!");
