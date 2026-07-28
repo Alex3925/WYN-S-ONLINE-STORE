@@ -12,27 +12,26 @@ app.use(cors());
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname)));
 
-/**
- * POST /api/order
- * Body: { orderId, total, items, ref, note }
- * Sends a formatted message to your Telegram via Bot API.
- */
 app.post("/api/order", async (req, res) => {
   try {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+      console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
       return res.status(503).json({
         ok: false,
-        error: "Telegram is not configured on the server. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID."
+        error: "Telegram is not configured. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID on the server."
       });
     }
 
-    const { orderId, total, items, ref, note } = req.body || {};
+    const { orderId, total, items, ref, note, telegramUsername, deviceName, buildNumber } = req.body || {};
 
     if (!orderId || typeof total !== "number" || !Array.isArray(items)) {
       return res.status(400).json({ ok: false, error: "Invalid order payload." });
     }
 
-    // Basic rate-ish guard
+    if (!telegramUsername || !deviceName) {
+      return res.status(400).json({ ok: false, error: "Telegram username and device name are required." });
+    }
+
     if (items.length > 50) {
       return res.status(400).json({ ok: false, error: "Too many items." });
     }
@@ -42,17 +41,20 @@ app.post("/api/order", async (req, res) => {
       .join("\n");
 
     const text = [
-      "🛒 *New order — FLUX ROOT SERVICES*",
+      "🛒 New order — FLUX ROOT SERVICES",
       "",
-      `*Order ID:* \`${escapeMd(orderId)}\``,
-      `*Total:* ₱${Number(total).toLocaleString("en-PH")}`,
-      ref ? `*Ref:* ${escapeMd(String(ref).slice(0, 120))}` : null,
-      note ? `*Note:* ${escapeMd(String(note).slice(0, 300))}` : null,
+      `Order ID: ${String(orderId).slice(0, 40)}`,
+      `Total: ₱${Number(total).toLocaleString("en-PH")}`,
+      `Telegram: @${String(telegramUsername).replace(/^@/, "").slice(0, 50)}`,
+      `Device: ${String(deviceName).slice(0, 80)}`,
+      buildNumber ? `Build: ${String(buildNumber).slice(0, 80)}` : null,
+      ref ? `Ref: ${String(ref).slice(0, 120)}` : null,
+      note ? `Note: ${String(note).slice(0, 300)}` : null,
       "",
-      "*Items:*",
+      "Items:",
       lines || "—",
       "",
-      `_Received ${new Date().toISOString()}_`
+      `Received ${new Date().toISOString()}`
     ]
       .filter((x) => x !== null)
       .join("\n");
@@ -64,7 +66,6 @@ app.post("/api/order", async (req, res) => {
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
         text,
-        parse_mode: "Markdown",
         disable_web_page_preview: true
       })
     });
@@ -87,18 +88,11 @@ app.post("/api/order", async (req, res) => {
   }
 });
 
-// SPA-ish fallback for unknown paths → index
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.listen(PORT, () => {
-  console.log(`FLUX ROOT SERVICES running on port ${PORT}`);
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.warn("⚠ TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — notifications disabled.");
-  }
+  console.log(`FLUX ROOT SERVICES on port ${PORT}`);
+  console.log(`Telegram configured: ${Boolean(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)}`);
 });
-
-function escapeMd(s) {
-  return String(s).replace(/([_*\[`])/g, "\\$1");
-}

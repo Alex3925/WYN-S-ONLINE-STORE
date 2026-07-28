@@ -6,7 +6,8 @@ const PRODUCTS = [
     price: 300,
     category: "Rooting",
     description: "Full root access for your device. Instant delivery via Telegram after payment confirmation.",
-    tags: ["root", "magisk", "android"]
+    tags: ["root", "magisk", "android"],
+    requiresBuild: true
   },
   {
     id: "unlock-bootloader",
@@ -14,7 +15,8 @@ const PRODUCTS = [
     price: 150,
     category: "Unlock",
     description: "Official / unofficial bootloader unlock service. Device-specific instructions included.",
-    tags: ["unlock", "bootloader", "oem"]
+    tags: ["unlock", "bootloader", "oem"],
+    requiresBuild: false
   },
   {
     id: "transsion-firmware",
@@ -22,7 +24,8 @@ const PRODUCTS = [
     price: 150,
     category: "Firmware",
     description: "Stock / custom firmware for Transsion devices (Infinix, Tecno, itel). Flash-ready files.",
-    tags: ["firmware", "transsion", "infinix", "tecno", "itel"]
+    tags: ["firmware", "transsion", "infinix", "tecno", "itel"],
+    requiresBuild: true
   }
 ];
 
