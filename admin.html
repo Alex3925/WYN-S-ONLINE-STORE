@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — FLUX ROOT SERVICES</title>
+  <meta name="theme-color" content="#0a0908" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .admin-login {
+      max-width: 360px;
+      margin: 3rem auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .admin-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      align-items: center;
+    }
+    .admin-toolbar .spacer { flex: 1; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-mark">F</span>
+        FLUX <span>ROOT</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Shop</a>
+        <a href="admin.html" class="active">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Admin</h1>
+    <p class="page-sub">Manage orders — mark completed after you deliver the service.</p>
+    <div id="admin-root"></div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© 2026 FLUX ROOT SERVICES</p>
+    </div>
+  </footer>
+
+  <script>
+    const SECRET_KEY = "flux_admin_secret";
+
+    function getSecret() {
+      return sessionStorage.getItem(SECRET_KEY) || "";
+    }
+
+    function setSecret(s) {
+      sessionStorage.setItem(SECRET_KEY, s);
+    }
+
+    function clearSecret() {
+      sessionStorage.removeItem(SECRET_KEY);
+    }
+
+    function render() {
+      const root = document.getElementById("admin-root");
+      if (!getSecret()) {
+        root.innerHTML = `
+          <div class="admin-login">
+            <div class="form-group">
+              <label for="secret">Admin password</label>
+              <input type="password" id="secret" placeholder="ADMIN_SECRET" />
+            </div>
+            <button class="btn btn-block" id="login-btn">Enter</button>
+            <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)">
+              Set ADMIN_SECRET in Render environment variables.
+            </p>
+          </div>`;
+        document.getElementById("login-btn").onclick = () => {
+          const v = document.getElementById("secret").value.trim();
+          if (!v) return;
+          setSecret(v);
+          loadOrders("pending");
+        };
+        document.getElementById("secret").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") document.getElementById("login-btn").click();
+        });
+        return;
+      }
+      loadOrders("pending");
+    }
+
+    async function loadOrders(filter) {
+      const root = document.getElementById("admin-root");
+      root.innerHTML = `<p style="color:var(--text-muted)">Loading…</p>`;
+
+      try {
+        const q = filter && filter !== "all" ? `?status=${filter}` : "";
+        const res = await fetch(`/api/admin/orders${q}`, {
+          headers: { "x-admin-secret": getSecret() }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          clearSecret();
+          render();
+          return;
+        }
+        if (!res.ok || !data.ok) {
+          root.innerHTML = `<div class="empty"><h3>Error</h3><p>${data.error || "Failed to load"}</p>
+            <button class="btn" style="margin-top:1rem" onclick="clearSecret();render()">Re-login</button></div>`;
+          return;
+        }
+        showList(data.orders || [], filter || "pending");
+      } catch (e) {
+        root.innerHTML = `<div class="empty"><h3>Network error</h3><p>${e.message}</p></div>`;
+      }
+    }
+
+    function showList(orders, filter) {
+      const root = document.getElementById("admin-root");
+      const filters = ["pending", "completed", "all"];
+      const toolbar = `
+        <div class="admin-toolbar">
+          ${filters
+            .map(
+              (f) =>
+                `<button class="cat-btn ${filter === f ? "active" : ""}" onclick="loadOrders('${f}')">${f}</button>`
+            )
+            .join("")}
+          <span class="spacer"></span>
+          <button class="btn btn-outline btn-sm" onclick="loadOrders('${filter}')">Refresh</button>
+          <button class="btn btn-outline btn-sm" onclick="clearSecret();render()">Logout</button>
+        </div>`;
+
+      if (orders.length === 0) {
+        root.innerHTML =
+          toolbar +
+          `<div class="empty"><h3>No orders</h3><p>Nothing in “${filter}”.</p></div>`;
+        return;
+      }
+
+      const cards = orders
+        .map((o) => {
+          const date = new Date(o.date);
+          const dateStr = date.toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short"
+          });
+          const itemsStr = (o.items || []).map((i) => `${i.name} × ${i.qty}`).join(", ");
+          const isPending = o.status === "pending";
+          return `
+            <div class="order-card">
+              <div class="order-header">
+                <div>
+                  <div class="order-id">${o.id}</div>
+                  <div class="order-date">${dateStr}</div>
+                </div>
+                <span class="order-status ${isPending ? "pending" : "completed"}">${o.status.toUpperCase()}</span>
+              </div>
+              <p class="order-items-line">${itemsStr}</p>
+              <p class="order-total">₱${Number(o.total).toLocaleString()} PHP</p>
+              <p class="order-meta">Telegram: @${o.telegramUsername || "—"}</p>
+              <p class="order-meta">Device: ${o.deviceName || "—"}</p>
+              ${o.buildNumber ? `<p class="order-meta">Build: ${o.buildNumber}</p>` : ""}
+              ${o.ref ? `<p class="order-meta">Ref: ${o.ref}</p>` : ""}
+              ${o.note ? `<p class="order-meta">Note: ${o.note}</p>` : ""}
+              <div style="display:flex;gap:0.5rem;margin-top:0.85rem;flex-wrap:wrap">
+                ${
+                  isPending
+                    ? `<button class="btn btn-sm" onclick="setStatus('${o.id}','completed')">Mark completed</button>`
+                    : `<button class="btn btn-outline btn-sm" onclick="setStatus('${o.id}','pending')">Reopen pending</button>`
+                }
+                <a class="btn btn-outline btn-sm" href="https://t.me/${o.telegramUsername || ""}" target="_blank" rel="noopener">Telegram</a>
+              </div>
+            </div>`;
+        })
+        .join("");
+
+      root.innerHTML = toolbar + cards;
+    }
+
+    async function setStatus(id, status) {
+      try {
+        const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-secret": getSecret()
+          },
+          body: JSON.stringify({ status })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || "Update failed");
+          return;
+        }
+        loadOrders("pending");
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", render);
+  </script>
+</body>
+</html>

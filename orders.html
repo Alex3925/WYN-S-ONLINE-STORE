@@ -30,7 +30,18 @@
 
   <main class="container">
     <h1 class="page-title">Order History</h1>
-    <p class="page-sub">Orders are saved on this device. After delivery, mark them as completed.</p>
+    <p class="page-sub">Enter your Telegram username to see live order status from our system.</p>
+
+    <div class="toolbar" style="margin-bottom:1.25rem">
+      <div class="search-wrap" style="flex:1">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+        </svg>
+        <input type="text" id="lookup-user" placeholder="@telegram username" autocomplete="off" />
+      </div>
+      <button class="btn" id="lookup-btn">Look up</button>
+    </div>
+
     <div id="orders-list"></div>
   </main>
 
@@ -43,64 +54,103 @@
   <script src="js/products.js"></script>
   <script src="js/cart.js"></script>
   <script>
-    function renderOrders() {
-      const wrap = document.getElementById("orders-list");
-      const orders = getOrders();
+    const LOOKUP_KEY = "flux_lookup_tg";
 
+    function renderLocalFallback() {
+      const orders = getOrders();
       if (orders.length === 0) {
-        wrap.innerHTML = `
+        document.getElementById("orders-list").innerHTML = `
           <div class="empty">
             <div class="empty-icon">—</div>
             <h3>No orders yet</h3>
-            <p>Your past orders will appear here after checkout.</p>
-            <a href="index.html" class="btn" style="margin-top:1.15rem;display:inline-flex">Browse Services</a>
+            <p>Enter your Telegram username above after placing an order.</p>
           </div>`;
         return;
       }
+      showOrders(orders, true);
+    }
 
-      wrap.innerHTML = orders
-        .map((o) => {
-          const date = new Date(o.date);
-          const dateStr = date.toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short"
-          });
-          const itemsStr = o.items.map((i) => `${i.name} × ${i.qty}`).join(", ");
-          const isPending = o.status === "pending";
-          const statusClass = isPending ? "pending" : "completed";
-          const statusLabel = isPending ? "PENDING" : "COMPLETED";
-          const action = isPending
-            ? `<button class="btn btn-sm" style="margin-top:0.75rem" onclick="markComplete('${o.id}')">Mark as completed</button>`
-            : "";
-          return `
-            <div class="order-card">
-              <div class="order-header">
-                <div>
-                  <div class="order-id">${o.id}</div>
-                  <div class="order-date">${dateStr}</div>
+    function showOrders(orders, fromLocal) {
+      const wrap = document.getElementById("orders-list");
+      if (!orders.length) {
+        wrap.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">—</div>
+            <h3>No orders found</h3>
+            <p>Check the username or place an order first.</p>
+          </div>`;
+        return;
+      }
+      wrap.innerHTML =
+        (fromLocal
+          ? `<p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem">Showing device cache — look up by Telegram for live status.</p>`
+          : "") +
+        orders
+          .map((o) => {
+            const date = new Date(o.date);
+            const dateStr = date.toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short"
+            });
+            const itemsStr = (o.items || []).map((i) => `${i.name} × ${i.qty}`).join(", ");
+            const isPending = o.status === "pending";
+            return `
+              <div class="order-card">
+                <div class="order-header">
+                  <div>
+                    <div class="order-id">${o.id}</div>
+                    <div class="order-date">${dateStr}</div>
+                  </div>
+                  <span class="order-status ${isPending ? "pending" : "completed"}">${(o.status || "pending").toUpperCase()}</span>
                 </div>
-                <span class="order-status ${statusClass}">${statusLabel}</span>
-              </div>
-              <p class="order-items-line">${itemsStr}</p>
-              <p class="order-total">₱${o.total.toLocaleString()} PHP</p>
-              ${o.telegramUsername ? `<p class="order-meta">Telegram: @${o.telegramUsername}</p>` : ""}
-              ${o.deviceName ? `<p class="order-meta">Device: ${o.deviceName}</p>` : ""}
-              ${o.buildNumber ? `<p class="order-meta">Build: ${o.buildNumber}</p>` : ""}
-              ${o.ref ? `<p class="order-meta">Ref: ${o.ref}</p>` : ""}
-              ${o.note ? `<p class="order-meta">Note: ${o.note}</p>` : ""}
-              ${action}
-            </div>`;
-        })
-        .join("");
+                <p class="order-items-line">${itemsStr}</p>
+                <p class="order-total">₱${Number(o.total).toLocaleString()} PHP</p>
+                ${o.telegramUsername ? `<p class="order-meta">Telegram: @${o.telegramUsername}</p>` : ""}
+                ${o.deviceName ? `<p class="order-meta">Device: ${o.deviceName}</p>` : ""}
+                ${o.buildNumber ? `<p class="order-meta">Build: ${o.buildNumber}</p>` : ""}
+                ${o.ref ? `<p class="order-meta">Ref: ${o.ref}</p>` : ""}
+                ${o.note ? `<p class="order-meta">Note: ${o.note}</p>` : ""}
+              </div>`;
+          })
+          .join("");
     }
 
-    function markComplete(orderId) {
-      if (!updateOrderStatus(orderId, "completed")) return;
-      showToast("Marked as completed");
-      renderOrders();
+    async function lookup() {
+      const input = document.getElementById("lookup-user");
+      const user = input.value.trim().replace(/^@/, "");
+      if (!user) {
+        renderLocalFallback();
+        return;
+      }
+      localStorage.setItem(LOOKUP_KEY, user);
+      const wrap = document.getElementById("orders-list");
+      wrap.innerHTML = `<p style="color:var(--text-muted)">Loading…</p>`;
+      try {
+        const res = await fetch(`/api/orders?telegram=${encodeURIComponent(user)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          wrap.innerHTML = `<div class="empty"><h3>Could not load</h3><p>${data.error || "Try again"}</p></div>`;
+          return;
+        }
+        showOrders(data.orders || [], false);
+      } catch (e) {
+        wrap.innerHTML = `<div class="empty"><h3>Network error</h3><p>${e.message}</p></div>`;
+      }
     }
 
-    document.addEventListener("DOMContentLoaded", renderOrders);
+    document.addEventListener("DOMContentLoaded", () => {
+      const saved = localStorage.getItem(LOOKUP_KEY);
+      if (saved) {
+        document.getElementById("lookup-user").value = saved;
+        lookup();
+      } else {
+        renderLocalFallback();
+      }
+      document.getElementById("lookup-btn").addEventListener("click", lookup);
+      document.getElementById("lookup-user").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") lookup();
+      });
+    });
   </script>
 </body>
 </html>
