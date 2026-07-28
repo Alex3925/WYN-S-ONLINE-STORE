@@ -1,6 +1,6 @@
 {
   "name": "flux-root-services",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "FLUX ROOT SERVICES — digital phone services storefront",
   "main": "server.js",
   "scripts": {
@@ -10,7 +10,8 @@
     "node": ">=18"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.21.2",
-    "cors": "^2.8.5"
+    "pg": "^8.13.1"
   }
 }

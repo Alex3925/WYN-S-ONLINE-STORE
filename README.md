@@ -1,87 +1,66 @@
 # FLUX ROOT SERVICES
 
-Professional digital phone services storefront — Root, Unlock Bootloader, Firmware, and more.
-
-**Pay via Maya QR PH · Auto Telegram notify · Delivery via Telegram**
+Digital phone services storefront with **Neon Postgres**, Maya QR checkout, and Telegram alerts.
 
 ## Features
 
-- Product catalog with categories & search
-- Cart + order history (localStorage)
-- Checkout with Maya QR
-- **Telegram bot notification** when a customer places an order
-- Hosted on Render (Node web service)
+- Product catalog, search, categories, cart
+- Checkout → saves order to **Neon** + notifies Telegram
+- Customer order lookup by Telegram username (live status)
+- **Admin panel** (`/admin.html`) — mark orders completed
+- Dark gold minimal UI
 
----
+## Setup
 
-## 1. Create your Telegram bot
+### 1. Neon database (free)
 
-1. Open Telegram → search **@BotFather**
-2. Send `/newbot` and follow the prompts
-3. Copy the **bot token** (looks like `7123456789:AAH...`)
-4. Start a chat with your new bot and press **Start**
-5. Get your **Chat ID**:
-   - Open this URL in a browser (replace TOKEN):
-     `https://api.telegram.org/botTOKEN/getUpdates`
-   - Look for `"chat":{"id": 123456789` — that number is your Chat ID  
-   - Or message **@userinfobot** — it replies with your ID
+1. Create account at [neon.tech](https://neon.tech)
+2. **New Project** → copy the **connection string**  
+   (looks like `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`)
+3. You do **not** need to create tables — the app creates them on start.
 
----
+### 2. Telegram bot
 
-## 2. Deploy on Render (Web Service)
+1. @BotFather → `/newbot` → copy token  
+2. Message your bot, get chat ID via `getUpdates` or @userinfobot
 
-This project needs a **Web Service** (not Static Site) so the bot token stays private.
+### 3. Render Web Service
 
-1. [render.com](https://render.com) → **New** → **Web Service**
-2. Connect repo `Alex3925/WYN-S-ONLINE-STORE`
-3. Settings:
-   - **Runtime**: Node
-   - **Build Command**: `npm install`
-   - **Start Command**: `node server.js`
-4. **Environment Variables** (Render → Environment):
+| Setting | Value |
+|--------|--------|
+| Runtime | Node |
+| Build | `npm install` |
+| Start | `node server.js` |
 
-   | Key | Value |
-   |-----|--------|
-   | `TELEGRAM_BOT_TOKEN` | your bot token from BotFather |
-   | `TELEGRAM_CHAT_ID` | your numeric chat ID |
+**Environment variables:**
 
-5. Deploy
+| Key | Value |
+|-----|--------|
+| `DATABASE_URL` | Neon connection string |
+| `TELEGRAM_BOT_TOKEN` | Bot token |
+| `TELEGRAM_CHAT_ID` | Your numeric chat ID |
+| `ADMIN_SECRET` | Password for `/admin.html` (pick a strong one) |
 
-When a customer clicks **I've Paid — Create Order**, you get a Telegram message with order ID, total, items, ref, and notes.
+### 4. After deploy
 
----
+- Shop: `/`
+- Orders lookup: `/orders.html`
+- Admin: `/admin.html` (login with `ADMIN_SECRET`)
+- Health check: `/api/health` → should show `"db": true`
 
-## 3. Customize the storefront
+### 5. Customize
 
-### Maya QR
-Upload your image as `assets/maya-qr.png`
+- Maya QR → `assets/maya-qr.png`
+- Products → `js/products.js`
+- Telegram link in `checkout.html` → already `@alexdevyuhhh`
 
-### Telegram link (fallback button)
-In `checkout.html`:
-```js
-const TELEGRAM_LINK = "https://t.me/YOUR_USERNAME";
-```
-
-### Products
-Edit `js/products.js`
-
----
-
-## Local test
+## Local
 
 ```bash
-export TELEGRAM_BOT_TOKEN=your_token
-export TELEGRAM_CHAT_ID=your_chat_id
+export DATABASE_URL="postgresql://..."
+export TELEGRAM_BOT_TOKEN=...
+export TELEGRAM_CHAT_ID=...
+export ADMIN_SECRET=mysecret
 npm install
 npm start
 ```
-
-Open http://localhost:3000
-
----
-
-## Tech
-
-- Frontend: HTML / CSS / vanilla JS
-- Backend: Express (`/api/order` → Telegram Bot API)
-- Secrets only on the server (env vars)
