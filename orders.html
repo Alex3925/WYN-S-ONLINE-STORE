@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Order History — WYN'S SARI SARI STORE</title>
+  <meta name="theme-color" content="#08090b" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,7 +13,10 @@
 <body>
   <header class="header">
     <div class="container header-inner">
-      <a href="index.html" class="logo">WYN'S <span>SARI SARI</span></a>
+      <a href="index.html" class="logo">
+        <span class="logo-mark">W</span>
+        WYN'S <span>SARI SARI</span>
+      </a>
       <nav class="nav">
         <a href="index.html">Shop</a>
         <a href="orders.html" class="active">Orders</a>
@@ -26,9 +30,7 @@
 
   <main class="container">
     <h1 class="page-title">Order History</h1>
-    <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.25rem">
-      Orders are saved on this device only. After paying, message us on Telegram with your Order ID.
-    </p>
+    <p class="page-sub">Orders are saved on this device. Message us on Telegram with your Order ID after payment.</p>
     <div id="orders-list"></div>
   </main>
 
@@ -48,9 +50,10 @@
       if (orders.length === 0) {
         wrap.innerHTML = `
           <div class="empty">
+            <div class="empty-icon">📋</div>
             <h3>No orders yet</h3>
             <p>Your past orders will appear here after checkout.</p>
-            <a href="index.html" class="btn" style="margin-top:1rem;display:inline-flex">Go to Shop</a>
+            <a href="index.html" class="btn" style="margin-top:1.25rem;display:inline-flex">Browse Services</a>
           </div>`;
         return;
       }
@@ -62,9 +65,7 @@
             dateStyle: "medium",
             timeStyle: "short"
           });
-          const itemsStr = o.items
-            .map((i) => `${i.name} × ${i.qty}`)
-            .join(", ");
+          const itemsStr = o.items.map((i) => `${i.name} × ${i.qty}`).join(", ");
           return `
             <div class="order-card">
               <div class="order-header">
@@ -74,10 +75,10 @@
                 </div>
                 <span class="order-status ${o.status === "pending" ? "pending" : ""}">${o.status}</span>
               </div>
-              <p style="font-size:0.9rem;margin-bottom:0.35rem">${itemsStr}</p>
-              <p style="font-weight:600">₱${o.total.toLocaleString()} PHP</p>
-              ${o.ref ? `<p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.35rem">Ref: ${o.ref}</p>` : ""}
-              ${o.note ? `<p style="font-size:0.85rem;color:var(--text-muted)">Note: ${o.note}</p>` : ""}
+              <p class="order-items-line">${itemsStr}</p>
+              <p class="order-total">₱${o.total.toLocaleString()} PHP</p>
+              ${o.ref ? `<p class="order-meta">Ref: ${o.ref}</p>` : ""}
+              ${o.note ? `<p class="order-meta">Note: ${o.note}</p>` : ""}
             </div>`;
         })
         .join("");

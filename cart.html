@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cart — WYN'S SARI SARI STORE</title>
+  <meta name="theme-color" content="#08090b" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,7 +13,10 @@
 <body>
   <header class="header">
     <div class="container header-inner">
-      <a href="index.html" class="logo">WYN'S <span>SARI SARI</span></a>
+      <a href="index.html" class="logo">
+        <span class="logo-mark">W</span>
+        WYN'S <span>SARI SARI</span>
+      </a>
       <nav class="nav">
         <a href="index.html">Shop</a>
         <a href="orders.html">Orders</a>
@@ -26,6 +30,7 @@
 
   <main class="container">
     <h1 class="page-title">Your Cart</h1>
+    <p class="page-sub">Review your services before checkout.</p>
     <div id="cart-content"></div>
   </main>
 
@@ -45,14 +50,15 @@
       if (cart.length === 0) {
         wrap.innerHTML = `
           <div class="empty">
+            <div class="empty-icon">🛒</div>
             <h3>Cart is empty</h3>
             <p>Browse services and add them to your cart.</p>
-            <a href="index.html" class="btn" style="margin-top:1rem;display:inline-flex">Go to Shop</a>
+            <a href="index.html" class="btn" style="margin-top:1.25rem;display:inline-flex">Browse Services</a>
           </div>`;
         return;
       }
 
-      let itemsHtml = cart
+      const itemsHtml = cart
         .map((item) => {
           const p = PRODUCTS.find((x) => x.id === item.id);
           if (!p) return "";
@@ -89,8 +95,10 @@
             <span>₱${total.toLocaleString()} PHP</span>
           </div>
         </div>
-        <a href="checkout.html" class="btn btn-block">Proceed to Checkout</a>
-        <a href="index.html" class="btn btn-outline btn-block" style="margin-top:0.6rem">Continue Shopping</a>
+        <div class="cart-actions">
+          <a href="checkout.html" class="btn btn-lg btn-block">Proceed to Checkout</a>
+          <a href="index.html" class="btn btn-outline btn-block">Continue Shopping</a>
+        </div>
       `;
     }
 
