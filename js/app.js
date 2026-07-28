@@ -1,14 +1,20 @@
+const CATEGORY_ICONS = {
+  Rooting: "🔓",
+  Unlock: "🔑",
+  Firmware: "📦",
+  default: "⚡"
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   const grid = document.getElementById("products");
   const searchInput = document.getElementById("search");
   const catContainer = document.getElementById("categories");
 
-  if (!grid) return; // not on products page
+  if (!grid) return;
 
   let activeCategory = "All";
   let searchQuery = "";
 
-  // Render category buttons
   CATEGORIES.forEach((cat) => {
     const btn = document.createElement("button");
     btn.className = "cat-btn" + (cat === "All" ? " active" : "");
@@ -28,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function render() {
-    let list = PRODUCTS.filter((p) => {
+    const list = PRODUCTS.filter((p) => {
       const matchCat = activeCategory === "All" || p.category === activeCategory;
       const matchSearch =
         !searchQuery ||
@@ -41,25 +47,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (list.length === 0) {
       grid.innerHTML = `
         <div class="empty" style="grid-column: 1 / -1">
-          <h3>No products found</h3>
+          <div class="empty-icon">🔍</div>
+          <h3>No services found</h3>
           <p>Try a different search or category.</p>
         </div>`;
       return;
     }
 
     grid.innerHTML = list
-      .map(
-        (p) => `
+      .map((p) => {
+        const icon = CATEGORY_ICONS[p.category] || CATEGORY_ICONS.default;
+        return `
       <article class="product-card">
-        <div class="product-cat">${p.category}</div>
+        <div class="product-top">
+          <div class="product-icon">${icon}</div>
+          <span class="product-cat">${p.category}</span>
+        </div>
         <h3>${p.name}</h3>
         <p>${p.description}</p>
         <div class="product-footer">
-          <div class="price">₱${p.price.toLocaleString()} <span>PHP</span></div>
+          <div class="price">₱${p.price.toLocaleString()}<span>PHP</span></div>
           <button class="btn btn-sm" onclick="addToCart('${p.id}')">Add to Cart</button>
         </div>
-      </article>`
-      )
+      </article>`;
+      })
       .join("");
   }
 
