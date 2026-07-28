@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Order History — FLUX ROOT SERVICES</title>
-  <meta name="theme-color" content="#08090b" />
+  <meta name="theme-color" content="#0a0908" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -30,7 +30,7 @@
 
   <main class="container">
     <h1 class="page-title">Order History</h1>
-    <p class="page-sub">Orders are saved on this device. Message us on Telegram with your Order ID after payment.</p>
+    <p class="page-sub">Orders are saved on this device. After delivery, mark them as completed.</p>
     <div id="orders-list"></div>
   </main>
 
@@ -50,10 +50,10 @@
       if (orders.length === 0) {
         wrap.innerHTML = `
           <div class="empty">
-            <div class="empty-icon">📋</div>
+            <div class="empty-icon">—</div>
             <h3>No orders yet</h3>
             <p>Your past orders will appear here after checkout.</p>
-            <a href="index.html" class="btn" style="margin-top:1.25rem;display:inline-flex">Browse Services</a>
+            <a href="index.html" class="btn" style="margin-top:1.15rem;display:inline-flex">Browse Services</a>
           </div>`;
         return;
       }
@@ -66,6 +66,12 @@
             timeStyle: "short"
           });
           const itemsStr = o.items.map((i) => `${i.name} × ${i.qty}`).join(", ");
+          const isPending = o.status === "pending";
+          const statusClass = isPending ? "pending" : "completed";
+          const statusLabel = isPending ? "PENDING" : "COMPLETED";
+          const action = isPending
+            ? `<button class="btn btn-sm" style="margin-top:0.75rem" onclick="markComplete('${o.id}')">Mark as completed</button>`
+            : "";
           return `
             <div class="order-card">
               <div class="order-header">
@@ -73,15 +79,25 @@
                   <div class="order-id">${o.id}</div>
                   <div class="order-date">${dateStr}</div>
                 </div>
-                <span class="order-status ${o.status === "pending" ? "pending" : ""}">${o.status}</span>
+                <span class="order-status ${statusClass}">${statusLabel}</span>
               </div>
               <p class="order-items-line">${itemsStr}</p>
               <p class="order-total">₱${o.total.toLocaleString()} PHP</p>
+              ${o.telegramUsername ? `<p class="order-meta">Telegram: @${o.telegramUsername}</p>` : ""}
+              ${o.deviceName ? `<p class="order-meta">Device: ${o.deviceName}</p>` : ""}
+              ${o.buildNumber ? `<p class="order-meta">Build: ${o.buildNumber}</p>` : ""}
               ${o.ref ? `<p class="order-meta">Ref: ${o.ref}</p>` : ""}
               ${o.note ? `<p class="order-meta">Note: ${o.note}</p>` : ""}
+              ${action}
             </div>`;
         })
         .join("");
+    }
+
+    function markComplete(orderId) {
+      if (!updateOrderStatus(orderId, "completed")) return;
+      showToast("Marked as completed");
+      renderOrders();
     }
 
     document.addEventListener("DOMContentLoaded", renderOrders);

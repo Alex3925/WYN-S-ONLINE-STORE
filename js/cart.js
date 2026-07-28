@@ -84,6 +84,15 @@ function saveOrder(order) {
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 }
 
+function updateOrderStatus(orderId, status) {
+  const orders = getOrders();
+  const order = orders.find((o) => o.id === orderId);
+  if (!order) return false;
+  order.status = status;
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  return true;
+}
+
 function generateOrderId() {
   const t = Date.now().toString(36).toUpperCase();
   const r = Math.random().toString(36).slice(2, 6).toUpperCase();
