@@ -34,15 +34,15 @@
   </header>
   <main class="container">
     <h1 class="page-title">Admin</h1>
-    <p class="page-sub">Orders, services & categories — changes go live instantly.</p>
+    <p class="page-sub">Orders, services and categories — changes go live instantly.</p>
     <div id="admin-root"></div>
   </main>
-  <footer class="footer"><div class="container"><p>© 2026 FLUX ROOT SERVICES</p></div></footer>
+  <footer class="footer"><div class="container"><p>2026 FLUX ROOT SERVICES</p></div></footer>
   <script>
-    const SECRET_KEY = "flux_admin_secret";
-    let currentTab = "orders";
-    let orderFilter = "pending";
-    let editingId = null;
+    var SECRET_KEY = "flux_admin_secret";
+    var currentTab = "orders";
+    var orderFilter = "pending";
+    var editingId = null;
 
     function getSecret() { return sessionStorage.getItem(SECRET_KEY) || ""; }
     function setSecret(s) { sessionStorage.setItem(SECRET_KEY, s); }
@@ -51,225 +51,346 @@
       return { "Content-Type": "application/json", "x-admin-secret": getSecret() };
     }
 
-    function renderShell() {
-      const root = document.getElementById("admin-root");
-      if (!getSecret()) {
-        root.innerHTML = `<div class="admin-login">
-          <div class="form-group"><label for="secret">Admin password</label>
-          <input type="password" id="secret" placeholder="ADMIN_SECRET" /></div>
-          <button class="btn btn-block" id="login-btn">Enter</button>
-          <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)">Set ADMIN_SECRET in Render.</p></div>`;
-        document.getElementById("login-btn").onclick = () => {
-          const v = document.getElementById("secret").value.trim();
-          if (!v) return; setSecret(v); renderShell();
-        };
-        document.getElementById("secret").addEventListener("keydown", (e) => {
-          if (e.key === "Enter") document.getElementById("login-btn").click();
-        });
-        return;
-      }
-      root.innerHTML = `<div class="tabs">
-        <button class="tab ${currentTab==="orders"?"active":""}" data-tab="orders">Orders</button>
-        <button class="tab ${currentTab==="services"?"active":""}" data-tab="services">Services</button>
-        <span style="flex:1"></span>
-        <button class="btn btn-outline btn-sm" onclick="clearSecret();renderShell()">Logout</button>
-      </div><div id="tab-body"></div>`;
-      root.querySelectorAll(".tab").forEach((btn) => {
-        btn.onclick = () => { currentTab = btn.dataset.tab; editingId = null; renderShell(); };
-      });
-      if (currentTab === "orders") loadOrders(orderFilter); else loadProducts();
+    function esc(s) {
+      var d = document.createElement("div");
+      d.textContent = s == null ? "" : String(s);
+      return d.innerHTML;
     }
 
-    async function loadOrders(filter) {
-      orderFilter = filter || orderFilter;
-      const body = document.getElementById("tab-body");
-      body.innerHTML = `<p style="color:var(--text-muted)">Loading…</p>`;
-      try {
-        const q = orderFilter !== "all" ? `?status=${orderFilter}` : "";
-        const res = await fetch(`/api/admin/orders${q}`, { headers: headers() });
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 401) { clearSecret(); renderShell(); return; }
-        if (!res.ok || !data.ok) {
-          body.innerHTML = `<div class="empty"><h3>Error</h3><p>${data.error||"Failed"}</p></div>`;
-          return;
-        }
-        showOrders(data.orders || []);
-      } catch (e) {
-        body.innerHTML = `<div class="empty"><h3>Network error</h3><p>${e.message}</p></div>`;
+    function renderShell() {
+      var root = document.getElementById("admin-root");
+      if (!root) return;
+      if (!getSecret()) {
+        root.innerHTML = ""
+          + "<div class=\"admin-login\">"
+          + "<div class=\"form-group\"><label for=\"secret\">Admin password</label>"
+          + "<input type=\"password\" id=\"secret\" placeholder=\"ADMIN_SECRET\" /></div>"
+          + "<button class=\"btn btn-block\" type=\"button\" id=\"login-btn\">Enter</button>"
+          + "<p style=\"margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)\">"
+          + "Password is ADMIN_SECRET from Render environment.</p></div>";
+        var btn = document.getElementById("login-btn");
+        var input = document.getElementById("secret");
+        btn.onclick = function () {
+          var v = input.value.trim();
+          if (!v) return;
+          setSecret(v);
+          renderShell();
+        };
+        input.onkeydown = function (e) {
+          if (e.key === "Enter") btn.click();
+        };
+        return;
       }
+      root.innerHTML = ""
+        + "<div class=\"tabs\">"
+        + "<button class=\"tab " + (currentTab === "orders" ? "active" : "") + "\" data-tab=\"orders\">Orders</button>"
+        + "<button class=\"tab " + (currentTab === "services" ? "active" : "") + "\" data-tab=\"services\">Services</button>"
+        + "<span style=\"flex:1\"></span>"
+        + "<button class=\"btn btn-outline btn-sm\" id=\"logout-btn\">Logout</button>"
+        + "</div><div id=\"tab-body\"></div>";
+      document.getElementById("logout-btn").onclick = function () {
+        clearSecret();
+        renderShell();
+      };
+      var tabs = root.querySelectorAll(".tab");
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].onclick = function () {
+          currentTab = this.getAttribute("data-tab");
+          editingId = null;
+          renderShell();
+        };
+      }
+      if (currentTab === "orders") loadOrders(orderFilter);
+      else loadProducts();
+    }
+
+    function loadOrders(filter) {
+      orderFilter = filter || orderFilter;
+      var body = document.getElementById("tab-body");
+      if (!body) return;
+      body.innerHTML = "<p style=\"color:var(--text-muted)\">Loading...</p>";
+      var q = orderFilter !== "all" ? "?status=" + encodeURIComponent(orderFilter) : "";
+      fetch("/api/admin/orders" + q, { headers: headers() })
+        .then(function (res) {
+          return res.json().then(function (data) { return { res: res, data: data }; });
+        })
+        .then(function (x) {
+          if (x.res.status === 401) { clearSecret(); renderShell(); return; }
+          if (!x.res.ok || !x.data.ok) {
+            body.innerHTML = "<div class=\"empty\"><h3>Error</h3><p>" + esc(x.data.error || "Failed") + "</p></div>";
+            return;
+          }
+          showOrders(x.data.orders || []);
+        })
+        .catch(function (e) {
+          body.innerHTML = "<div class=\"empty\"><h3>Network error</h3><p>" + esc(e.message) + "</p></div>";
+        });
     }
 
     function showOrders(orders) {
-      const body = document.getElementById("tab-body");
-      const filters = ["pending", "completed", "all"];
-      const toolbar = `<div class="admin-toolbar">${filters.map((f) =>
-        `<button class="cat-btn ${orderFilter===f?"active":""}" onclick="loadOrders('${f}')">${f}</button>`
-      ).join("")}<span class="spacer"></span>
-      <button class="btn btn-outline btn-sm" onclick="loadOrders('${orderFilter}')">Refresh</button></div>`;
+      var body = document.getElementById("tab-body");
+      var filters = ["pending", "completed", "all"];
+      var toolbar = "<div class=\"admin-toolbar\">";
+      for (var i = 0; i < filters.length; i++) {
+        var f = filters[i];
+        toolbar += "<button class=\"cat-btn " + (orderFilter === f ? "active" : "") + "\" data-filter=\"" + f + "\">" + f + "</button>";
+      }
+      toolbar += "<span class=\"spacer\"></span>"
+        + "<button class=\"btn btn-outline btn-sm\" id=\"refresh-orders\">Refresh</button></div>";
       if (!orders.length) {
-        body.innerHTML = toolbar + `<div class="empty"><h3>No orders</h3><p>Nothing in “${orderFilter}”.</p></div>`;
-        return;
-      }
-      body.innerHTML = toolbar + orders.map((o) => {
-        const dateStr = new Date(o.date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-        const itemsStr = (o.items||[]).map((i) => `${i.name} × ${i.qty}`).join(", ");
-        const isPending = o.status === "pending";
-        return `<div class="order-card"><div class="order-header"><div>
-          <div class="order-id">${esc(o.id)}</div><div class="order-date">${dateStr}</div></div>
-          <span class="order-status ${isPending?"pending":"completed"}">${(o.status||"").toUpperCase()}</span></div>
-          <p class="order-items-line">${esc(itemsStr)}</p>
-          <p class="order-total">₱${Number(o.total).toLocaleString()} PHP</p>
-          <p class="order-meta">Telegram: @${esc(o.telegramUsername||"—")}</p>
-          <p class="order-meta">Device: ${esc(o.deviceName||"—")}</p>
-          ${o.buildNumber?`<p class="order-meta">Build: ${esc(o.buildNumber)}</p>`:""}
-          ${o.ref?`<p class="order-meta">Ref: ${esc(o.ref)}</p>`:""}
-          ${o.note?`<p class="order-meta">Note: ${esc(o.note)}</p>`:""}
-          <div style="display:flex;gap:0.5rem;margin-top:0.85rem;flex-wrap:wrap">
-          ${isPending?`<button class="btn btn-sm" onclick="setStatus('${o.id}','completed')">Mark completed</button>`
-            :`<button class="btn btn-outline btn-sm" onclick="setStatus('${o.id}','pending')">Reopen</button>`}
-          <a class="btn btn-outline btn-sm" href="https://t.me/${esc(o.telegramUsername||"")}" target="_blank" rel="noopener">Telegram</a>
-          </div></div>`;
-      }).join("");
-    }
-
-    async function setStatus(id, status) {
-      const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
-        method: "PATCH", headers: headers(), body: JSON.stringify({ status })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) { alert(data.error || "Update failed"); return; }
-      loadOrders(orderFilter);
-    }
-
-    async function loadProducts() {
-      const body = document.getElementById("tab-body");
-      body.innerHTML = `<p style="color:var(--text-muted)">Loading…</p>`;
-      try {
-        const res = await fetch("/api/admin/products", { headers: headers() });
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 401) { clearSecret(); renderShell(); return; }
-        if (!res.ok || !data.ok) {
-          body.innerHTML = `<div class="empty"><h3>Error</h3><p>${data.error||"Failed"}</p></div>`;
-          return;
+        body.innerHTML = toolbar + "<div class=\"empty\"><h3>No orders</h3><p>Nothing in this filter.</p></div>";
+      } else {
+        var html = toolbar;
+        for (var j = 0; j < orders.length; j++) {
+          var o = orders[j];
+          var dateStr = new Date(o.date).toLocaleString();
+          var itemsStr = (o.items || []).map(function (it) { return it.name + " x " + it.qty; }).join(", ");
+          var isPending = o.status === "pending";
+          html += "<div class=\"order-card\"><div class=\"order-header\"><div>"
+            + "<div class=\"order-id\">" + esc(o.id) + "</div>"
+            + "<div class=\"order-date\">" + esc(dateStr) + "</div></div>"
+            + "<span class=\"order-status " + (isPending ? "pending" : "completed") + "\">" + esc((o.status || "").toUpperCase()) + "</span></div>"
+            + "<p class=\"order-items-line\">" + esc(itemsStr) + "</p>"
+            + "<p class=\"order-total\">PHP " + Number(o.total).toLocaleString() + "</p>"
+            + "<p class=\"order-meta\">Telegram: @" + esc(o.telegramUsername || "-") + "</p>"
+            + "<p class=\"order-meta\">Device: " + esc(o.deviceName || "-") + "</p>";
+          if (o.buildNumber) html += "<p class=\"order-meta\">Build: " + esc(o.buildNumber) + "</p>";
+          if (o.ref) html += "<p class=\"order-meta\">Ref: " + esc(o.ref) + "</p>";
+          if (o.note) html += "<p class=\"order-meta\">Note: " + esc(o.note) + "</p>";
+          html += "<div style=\"display:flex;gap:0.5rem;margin-top:0.85rem;flex-wrap:wrap\">";
+          if (isPending) {
+            html += "<button class=\"btn btn-sm\" data-complete=\"" + esc(o.id) + "\">Mark completed</button>";
+          } else {
+            html += "<button class=\"btn btn-outline btn-sm\" data-reopen=\"" + esc(o.id) + "\">Reopen</button>";
+          }
+          html += "<a class=\"btn btn-outline btn-sm\" href=\"https://t.me/" + encodeURIComponent(o.telegramUsername || "") + "\" target=\"_blank\" rel=\"noopener\">Telegram</a></div></div>";
         }
-        showProducts(data.products || []);
-      } catch (e) {
-        body.innerHTML = `<div class="empty"><h3>Network error</h3><p>${e.message}</p></div>`;
+        body.innerHTML = html;
       }
+      var filterBtns = body.querySelectorAll("[data-filter]");
+      for (var k = 0; k < filterBtns.length; k++) {
+        filterBtns[k].onclick = function () { loadOrders(this.getAttribute("data-filter")); };
+      }
+      var refresh = document.getElementById("refresh-orders");
+      if (refresh) refresh.onclick = function () { loadOrders(orderFilter); };
+      var completes = body.querySelectorAll("[data-complete]");
+      for (var c = 0; c < completes.length; c++) {
+        completes[c].onclick = function () { setStatus(this.getAttribute("data-complete"), "completed"); };
+      }
+      var reopens = body.querySelectorAll("[data-reopen]");
+      for (var r = 0; r < reopens.length; r++) {
+        reopens[r].onclick = function () { setStatus(this.getAttribute("data-reopen"), "pending"); };
+      }
+    }
+
+    function setStatus(id, status) {
+      fetch("/api/admin/orders/" + encodeURIComponent(id), {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify({ status: status })
+      })
+        .then(function (res) { return res.json().then(function (data) { return { res: res, data: data }; }); })
+        .then(function (x) {
+          if (!x.res.ok || !x.data.ok) { alert(x.data.error || "Update failed"); return; }
+          loadOrders(orderFilter);
+        })
+        .catch(function (e) { alert(e.message); });
+    }
+
+    function loadProducts() {
+      var body = document.getElementById("tab-body");
+      if (!body) return;
+      body.innerHTML = "<p style=\"color:var(--text-muted)\">Loading...</p>";
+      fetch("/api/admin/products", { headers: headers() })
+        .then(function (res) {
+          return res.json().then(function (data) { return { res: res, data: data }; });
+        })
+        .then(function (x) {
+          if (x.res.status === 401) { clearSecret(); renderShell(); return; }
+          if (!x.res.ok || !x.data.ok) {
+            body.innerHTML = "<div class=\"empty\"><h3>Error</h3><p>" + esc(x.data.error || "Failed") + "</p></div>";
+            return;
+          }
+          showProducts(x.data.products || []);
+        })
+        .catch(function (e) {
+          body.innerHTML = "<div class=\"empty\"><h3>Network error</h3><p>" + esc(e.message) + "</p></div>";
+        });
     }
 
     function showProducts(products) {
-      const body = document.getElementById("tab-body");
-      const categories = [...new Set(products.map((p) => p.category).filter(Boolean))].sort();
-      const form = `<div class="product-form">
-        <h3>${editingId ? "Edit service" : "Add new service"}</h3>
-        <div class="form-row">
-          <div class="form-group"><label>Name *</label><input type="text" id="p-name" placeholder="e.g. FRP REMOVE" /></div>
-          <div class="form-group"><label>Category * (type new to create)</label>
-            <input type="text" id="p-category" list="cat-list" placeholder="e.g. FRP" />
-            <datalist id="cat-list">${categories.map((c) => `<option value="${esc(c)}">`).join("")}</datalist>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Price (PHP) *</label><input type="number" id="p-price" min="0" step="1" placeholder="150" /></div>
-          <div class="form-group"><label>Sort order</label><input type="number" id="p-sort" value="0" /></div>
-        </div>
-        <div class="form-group"><label>Description</label><textarea id="p-desc" rows="2" placeholder="What the customer gets"></textarea></div>
-        <div class="form-group"><label>Tags (comma separated)</label><input type="text" id="p-tags" placeholder="frp, google" /></div>
-        <div class="check-row"><input type="checkbox" id="p-build" /><label for="p-build">Requires build number at checkout</label></div>
-        <div class="check-row"><input type="checkbox" id="p-active" checked /><label for="p-active">Active (visible in shop)</label></div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-          <button class="btn" id="p-save">${editingId ? "Save changes" : "Add service"}</button>
-          ${editingId ? `<button class="btn btn-outline" id="p-cancel">Cancel</button>` : ""}
-        </div></div>`;
+      var body = document.getElementById("tab-body");
+      var categories = [];
+      var seen = {};
+      for (var i = 0; i < products.length; i++) {
+        var cat = products[i].category;
+        if (cat && !seen[cat]) { seen[cat] = true; categories.push(cat); }
+      }
+      categories.sort();
+      var form = "<div class=\"product-form\"><h3>" + (editingId ? "Edit service" : "Add new service") + "</h3>"
+        + "<div class=\"form-row\"><div class=\"form-group\"><label>Name *</label>"
+        + "<input type=\"text\" id=\"p-name\" placeholder=\"e.g. FRP REMOVE\" /></div>"
+        + "<div class=\"form-group\"><label>Category * (type new to create)</label>"
+        + "<input type=\"text\" id=\"p-category\" list=\"cat-list\" placeholder=\"e.g. FRP\" />"
+        + "<datalist id=\"cat-list\">";
+      for (var c = 0; c < categories.length; c++) {
+        form += "<option value=\"" + esc(categories[c]) + "\">";
+      }
+      form += "</datalist></div></div>"
+        + "<div class=\"form-row\"><div class=\"form-group\"><label>Price (PHP) *</label>"
+        + "<input type=\"number\" id=\"p-price\" min=\"0\" step=\"1\" placeholder=\"150\" /></div>"
+        + "<div class=\"form-group\"><label>Sort order</label>"
+        + "<input type=\"number\" id=\"p-sort\" value=\"0\" /></div></div>"
+        + "<div class=\"form-group\"><label>Description</label>"
+        + "<textarea id=\"p-desc\" rows=\"2\" placeholder=\"What the customer gets\"></textarea></div>"
+        + "<div class=\"form-group\"><label>Tags (comma separated)</label>"
+        + "<input type=\"text\" id=\"p-tags\" placeholder=\"frp, google\" /></div>"
+        + "<div class=\"check-row\"><input type=\"checkbox\" id=\"p-build\" />"
+        + "<label for=\"p-build\">Requires build number at checkout</label></div>"
+        + "<div class=\"check-row\"><input type=\"checkbox\" id=\"p-active\" checked />"
+        + "<label for=\"p-active\">Active (visible in shop)</label></div>"
+        + "<div style=\"display:flex;gap:0.5rem;flex-wrap:wrap\">"
+        + "<button class=\"btn\" type=\"button\" id=\"p-save\">" + (editingId ? "Save changes" : "Add service") + "</button>";
+      if (editingId) form += "<button class=\"btn btn-outline\" type=\"button\" id=\"p-cancel\">Cancel</button>";
+      form += "</div></div>";
 
-      const list = !products.length
-        ? `<div class="empty"><h3>No services</h3><p>Add your first service above.</p></div>`
-        : products.map((p) => `<div class="order-card">
-            <div class="order-header"><div>
-              <div class="order-id">${esc(p.name)}${!p.active?'<span class="inactive-badge">HIDDEN</span>':''}</div>
-              <div class="order-date">${esc(p.category)} · ${esc(p.id)}</div></div>
-              <span class="order-total" style="margin:0">₱${Number(p.price).toLocaleString()}</span></div>
-            <p class="order-items-line">${esc(p.description||"—")}</p>
-            <p class="order-meta">Build required: ${p.requiresBuild?"Yes":"No"} · Sort: ${p.sortOrder||0}</p>
-            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap">
-              <button class="btn btn-sm" onclick="startEdit('${p.id}')">Edit</button>
-              <button class="btn btn-outline btn-sm" onclick="toggleActive('${p.id}', ${!p.active})">${p.active?"Hide":"Show"}</button>
-              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="deleteProduct('${p.id}')">Delete</button>
-            </div></div>`).join("");
-
+      var list = "";
+      if (!products.length) {
+        list = "<div class=\"empty\"><h3>No services</h3><p>Add your first service above.</p></div>";
+      } else {
+        for (var p = 0; p < products.length; p++) {
+          var prod = products[p];
+          list += "<div class=\"order-card\"><div class=\"order-header\"><div>"
+            + "<div class=\"order-id\">" + esc(prod.name)
+            + (!prod.active ? " <span class=\"inactive-badge\">HIDDEN</span>" : "") + "</div>"
+            + "<div class=\"order-date\">" + esc(prod.category) + " · " + esc(prod.id) + "</div></div>"
+            + "<span class=\"order-total\" style=\"margin:0\">PHP " + Number(prod.price).toLocaleString() + "</span></div>"
+            + "<p class=\"order-items-line\">" + esc(prod.description || "-") + "</p>"
+            + "<p class=\"order-meta\">Build required: " + (prod.requiresBuild ? "Yes" : "No")
+            + " · Sort: " + (prod.sortOrder || 0) + "</p>"
+            + "<div style=\"display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap\">"
+            + "<button class=\"btn btn-sm\" type=\"button\" data-edit=\"" + esc(prod.id) + "\">Edit</button>"
+            + "<button class=\"btn btn-outline btn-sm\" type=\"button\" data-toggle=\"" + esc(prod.id) + "\" data-active=\"" + (prod.active ? "0" : "1") + "\">"
+            + (prod.active ? "Hide" : "Show") + "</button>"
+            + "<button class=\"btn btn-outline btn-sm\" type=\"button\" style=\"color:var(--danger)\" data-del=\"" + esc(prod.id) + "\">Delete</button>"
+            + "</div></div>";
+        }
+      }
       body.innerHTML = form + list;
+
       if (editingId) {
-        const p = products.find((x) => x.id === editingId);
-        if (p) {
-          document.getElementById("p-name").value = p.name;
-          document.getElementById("p-category").value = p.category;
-          document.getElementById("p-price").value = p.price;
-          document.getElementById("p-sort").value = p.sortOrder || 0;
-          document.getElementById("p-desc").value = p.description || "";
-          document.getElementById("p-tags").value = (p.tags || []).join(", ");
-          document.getElementById("p-build").checked = !!p.requiresBuild;
-          document.getElementById("p-active").checked = p.active !== false;
+        var ep = null;
+        for (var e = 0; e < products.length; e++) {
+          if (products[e].id === editingId) { ep = products[e]; break; }
+        }
+        if (ep) {
+          document.getElementById("p-name").value = ep.name;
+          document.getElementById("p-category").value = ep.category;
+          document.getElementById("p-price").value = ep.price;
+          document.getElementById("p-sort").value = ep.sortOrder || 0;
+          document.getElementById("p-desc").value = ep.description || "";
+          document.getElementById("p-tags").value = (ep.tags || []).join(", ");
+          document.getElementById("p-build").checked = !!ep.requiresBuild;
+          document.getElementById("p-active").checked = ep.active !== false;
         }
       }
       document.getElementById("p-save").onclick = saveProduct;
-      const cancel = document.getElementById("p-cancel");
-      if (cancel) cancel.onclick = () => { editingId = null; loadProducts(); };
+      var cancel = document.getElementById("p-cancel");
+      if (cancel) cancel.onclick = function () { editingId = null; loadProducts(); };
+
+      var edits = body.querySelectorAll("[data-edit]");
+      for (var ei = 0; ei < edits.length; ei++) {
+        edits[ei].onclick = function () {
+          editingId = this.getAttribute("data-edit");
+          loadProducts();
+        };
+      }
+      var toggles = body.querySelectorAll("[data-toggle]");
+      for (var ti = 0; ti < toggles.length; ti++) {
+        toggles[ti].onclick = function () {
+          toggleActive(this.getAttribute("data-toggle"), this.getAttribute("data-active") === "1");
+        };
+      }
+      var dels = body.querySelectorAll("[data-del]");
+      for (var di = 0; di < dels.length; di++) {
+        dels[di].onclick = function () { deleteProduct(this.getAttribute("data-del")); };
+      }
     }
 
-    function startEdit(id) { editingId = id; loadProducts(); }
-
-    async function saveProduct() {
-      const payload = {
+    function saveProduct() {
+      var payload = {
         name: document.getElementById("p-name").value.trim(),
         category: document.getElementById("p-category").value.trim(),
         price: Number(document.getElementById("p-price").value),
         sortOrder: Number(document.getElementById("p-sort").value) || 0,
         description: document.getElementById("p-desc").value.trim(),
-        tags: document.getElementById("p-tags").value.split(",").map((t) => t.trim()).filter(Boolean),
+        tags: document.getElementById("p-tags").value.split(",").map(function (t) { return t.trim(); }).filter(Boolean),
         requiresBuild: document.getElementById("p-build").checked,
         active: document.getElementById("p-active").checked
       };
-      if (!payload.name || !payload.category || !Number.isFinite(payload.price)) {
-        alert("Name, category, and price are required."); return;
+      if (!payload.name || !payload.category || !isFinite(payload.price)) {
+        alert("Name, category, and price are required.");
+        return;
       }
-      const url = editingId ? `/api/admin/products/${encodeURIComponent(editingId)}` : "/api/admin/products";
-      const method = editingId ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(payload) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) { alert(data.error || "Save failed"); return; }
-      editingId = null; loadProducts();
+      var url = editingId ? "/api/admin/products/" + encodeURIComponent(editingId) : "/api/admin/products";
+      var method = editingId ? "PUT" : "POST";
+      fetch(url, { method: method, headers: headers(), body: JSON.stringify(payload) })
+        .then(function (res) { return res.json().then(function (data) { return { res: res, data: data }; }); })
+        .then(function (x) {
+          if (!x.res.ok || !x.data.ok) { alert(x.data.error || "Save failed"); return; }
+          editingId = null;
+          loadProducts();
+        })
+        .catch(function (e) { alert(e.message); });
     }
 
-    async function toggleActive(id, active) {
-      const res = await fetch("/api/admin/products", { headers: headers() });
-      const data = await res.json().catch(() => ({}));
-      const p = (data.products || []).find((x) => x.id === id);
-      if (!p) return;
-      const put = await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
-        method: "PUT", headers: headers(), body: JSON.stringify({ ...p, active })
-      });
-      const putData = await put.json().catch(() => ({}));
-      if (!put.ok || !putData.ok) { alert(putData.error || "Update failed"); return; }
-      loadProducts();
+    function toggleActive(id, active) {
+      fetch("/api/admin/products", { headers: headers() })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var list = data.products || [];
+          var p = null;
+          for (var i = 0; i < list.length; i++) {
+            if (list[i].id === id) { p = list[i]; break; }
+          }
+          if (!p) return;
+          p.active = active;
+          return fetch("/api/admin/products/" + encodeURIComponent(id), {
+            method: "PUT",
+            headers: headers(),
+            body: JSON.stringify(p)
+          });
+        })
+        .then(function (res) {
+          if (!res) return;
+          return res.json().then(function (data) {
+            if (!res.ok || !data.ok) alert(data.error || "Update failed");
+            else loadProducts();
+          });
+        })
+        .catch(function (e) { alert(e.message); });
     }
 
-    async function deleteProduct(id) {
+    function deleteProduct(id) {
       if (!confirm("Delete this service permanently?")) return;
-      const res = await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
-        method: "DELETE", headers: headers()
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) { alert(data.error || "Delete failed"); return; }
-      if (editingId === id) editingId = null;
-      loadProducts();
+      fetch("/api/admin/products/" + encodeURIComponent(id), {
+        method: "DELETE",
+        headers: headers()
+      })
+        .then(function (res) { return res.json().then(function (data) { return { res: res, data: data }; }); })
+        .then(function (x) {
+          if (!x.res.ok || !x.data.ok) { alert(x.data.error || "Delete failed"); return; }
+          if (editingId === id) editingId = null;
+          loadProducts();
+        })
+        .catch(function (e) { alert(e.message); });
     }
 
-    function esc(s) {
-      return String(s || "").replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""");
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", renderShell);
+    } else {
+      renderShell();
     }
-
-    document.addEventListener("DOMContentLoaded", renderShell);
   </script>
 </body>
 </html>
