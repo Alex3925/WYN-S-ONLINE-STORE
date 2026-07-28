@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order History — WYN'S SARI SARI STORE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">WYN'S <span>SARI SARI</span></a>
+      <nav class="nav">
+        <a href="index.html">Shop</a>
+        <a href="orders.html" class="active">Orders</a>
+        <a href="cart.html" class="cart-btn">
+          Cart
+          <span class="cart-count" style="display:none">0</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Order History</h1>
+    <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.25rem">
+      Orders are saved on this device only. After paying, message us on Telegram with your Order ID.
+    </p>
+    <div id="orders-list"></div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© 2026 WYN'S SARI SARI STORE</p>
+    </div>
+  </footer>
+
+  <script src="js/products.js"></script>
+  <script src="js/cart.js"></script>
+  <script>
+    function renderOrders() {
+      const wrap = document.getElementById("orders-list");
+      const orders = getOrders();
+
+      if (orders.length === 0) {
+        wrap.innerHTML = `
+          <div class="empty">
+            <h3>No orders yet</h3>
+            <p>Your past orders will appear here after checkout.</p>
+            <a href="index.html" class="btn" style="margin-top:1rem;display:inline-flex">Go to Shop</a>
+          </div>`;
+        return;
+      }
+
+      wrap.innerHTML = orders
+        .map((o) => {
+          const date = new Date(o.date);
+          const dateStr = date.toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short"
+          });
+          const itemsStr = o.items
+            .map((i) => `${i.name} × ${i.qty}`)
+            .join(", ");
+          return `
+            <div class="order-card">
+              <div class="order-header">
+                <div>
+                  <div class="order-id">${o.id}</div>
+                  <div class="order-date">${dateStr}</div>
+                </div>
+                <span class="order-status ${o.status === "pending" ? "pending" : ""}">${o.status}</span>
+              </div>
+              <p style="font-size:0.9rem;margin-bottom:0.35rem">${itemsStr}</p>
+              <p style="font-weight:600">₱${o.total.toLocaleString()} PHP</p>
+              ${o.ref ? `<p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.35rem">Ref: ${o.ref}</p>` : ""}
+              ${o.note ? `<p style="font-size:0.85rem;color:var(--text-muted)">Note: ${o.note}</p>` : ""}
+            </div>`;
+        })
+        .join("");
+    }
+
+    document.addEventListener("DOMContentLoaded", renderOrders);
+  </script>
+</body>
+</html>
