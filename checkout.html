@@ -111,8 +111,8 @@
         <div class="checkout-help">
           <h3>After payment</h3>
           <p>
-            Click the button above to save your order. Then message us on Telegram with your
-            <strong>Order ID</strong> so we can deliver the service.
+            Click the button above to save your order. You will be notified on Telegram automatically
+            when the bot is configured.
           </p>
           <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-outline btn-block">Open Telegram</a>
         </div>
@@ -121,7 +121,13 @@
       document.getElementById("confirm-btn").addEventListener("click", placeOrder);
     }
 
-    function placeOrder() {
+    async function placeOrder() {
+      const btn = document.getElementById("confirm-btn");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Sending...";
+      }
+
       const cart = getCart();
       if (cart.length === 0) return;
 
@@ -150,6 +156,26 @@
         status: "pending"
       };
 
+      // Notify your Telegram bot (server-side — token stays secret)
+      let notifyOk = false;
+      try {
+        const res = await fetch("/api/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId,
+            total,
+            items,
+            ref: ref || null,
+            note: note || null
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        notifyOk = res.ok && data.ok;
+      } catch (e) {
+        console.warn("Telegram notify failed:", e);
+      }
+
       saveOrder(order);
       clearCart();
 
@@ -167,14 +193,16 @@
         ? TELEGRAM_LINK
         : `${TELEGRAM_LINK}?text=${tgText}`;
 
+      const notifyMsg = notifyOk
+        ? "We were notified automatically. You can still message us on Telegram if needed."
+        : "Send this Order ID and payment proof on Telegram so we can process your service.";
+
       document.getElementById("checkout-content").innerHTML = `
         <div class="success-box">
           <div class="success-icon">✓</div>
           <h3>Order created</h3>
           <div class="order-id-display">${orderId}</div>
-          <p>
-            Send this Order ID and payment proof on Telegram so we can process and deliver your service.
-          </p>
+          <p>${notifyMsg}</p>
           <div class="success-actions">
             <a href="${tgUrl}" target="_blank" rel="noopener" class="btn btn-lg btn-block">Message on Telegram</a>
             <a href="orders.html" class="btn btn-outline btn-block">View Order History</a>
@@ -182,7 +210,7 @@
           </div>
         </div>
       `;
-      showToast("Order saved!");
+      showToast(notifyOk ? "Order sent to Telegram!" : "Order saved!");
     }
 
     document.addEventListener("DOMContentLoaded", renderCheckout);
