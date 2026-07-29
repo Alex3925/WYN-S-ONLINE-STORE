@@ -44,7 +44,7 @@ async function loadProducts() {
       PRODUCTS = data.products.map((p) => ({
         id: p.id,
         name: p.name,
-        price: parseInt(String(p.price ?? "0").replace(/[^0-9]/g, ""), 10) || 0,
+        price: parseInt(String(p.price == null ? "0" : p.price).replace(/[^0-9]/g, ""), 10) || 0,
         category: p.category,
         description: p.description || "",
         tags: Array.isArray(p.tags) ? p.tags : [],
