@@ -44,10 +44,10 @@ async function loadProducts() {
       PRODUCTS = data.products.map((p) => ({
         id: p.id,
         name: p.name,
-        price: Number(p.price),
+        price: parseInt(String(p.price ?? "0").replace(/[^0-9]/g, ""), 10) || 0,
         category: p.category,
         description: p.description || "",
-        tags: p.tags || [],
+        tags: Array.isArray(p.tags) ? p.tags : [],
         requiresBuild: Boolean(p.requiresBuild)
       }));
       rebuildCategories();
