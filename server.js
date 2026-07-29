@@ -56,7 +56,7 @@ const DEFAULT_PRODUCTS = [
 
 function parsePrice(v) {
   if (typeof v === "number" && Number.isFinite(v)) return Math.round(v);
-  const n = parseInt(String(v ?? "").replace(/[^0-9]/g, ""), 10);
+  const n = parseInt(String(v == null ? "" : v).replace(/[^0-9]/g, ""), 10);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -396,7 +396,11 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, db: dbReady, telegram: Boolean(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) });
 });
 
+// Do not return index.html for missing .js / .css / images
 app.get("*", (req, res) => {
+  if (path.extname(req.path)) {
+    return res.status(404).type("text/plain").send("Not found");
+  }
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
