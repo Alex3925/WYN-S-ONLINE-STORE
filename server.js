@@ -54,6 +54,12 @@ const DEFAULT_PRODUCTS = [
   }
 ];
 
+function parsePrice(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return Math.round(v);
+  const n = parseInt(String(v ?? "").replace(/[^0-9]/g, ""), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
 async function initDb() {
   if (!DATABASE_URL) {
     console.warn("DATABASE_URL not set — DB features disabled.");
@@ -128,13 +134,13 @@ function rowToProduct(r) {
   return {
     id: r.id,
     name: r.name,
-    price: r.price,
+    price: parsePrice(r.price),
     category: r.category,
-    description: r.description,
-    tags: r.tags || [],
+    description: r.description || "",
+    tags: Array.isArray(r.tags) ? r.tags : [],
     requiresBuild: Boolean(r.requires_build),
-    active: Boolean(r.active),
-    sortOrder: r.sort_order
+    active: r.active !== false && r.active !== "f" && r.active !== 0,
+    sortOrder: parsePrice(r.sort_order)
   };
 }
 
@@ -197,14 +203,14 @@ app.post("/api/admin/products", async (req, res) => {
     const b = req.body || {};
     const name = String(b.name || "").trim().slice(0, 80);
     const category = String(b.category || "").trim().slice(0, 40);
-    const price = Math.round(Number(b.price));
+    const price = parsePrice(b.price);
     const description = String(b.description || "").trim().slice(0, 500);
     const requiresBuild = Boolean(b.requiresBuild);
     const active = b.active !== false;
-    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Math.round(Number(b.sortOrder)) : 0;
+    const sortOrder = parsePrice(b.sortOrder);
     const tags = Array.isArray(b.tags) ? b.tags.map((t) => String(t).slice(0, 30)).slice(0, 20) : [];
-    if (!name || !category || !Number.isFinite(price) || price < 0) {
-      return res.status(400).json({ ok: false, error: "name, category, and valid price are required." });
+    if (!name || !category || !Number.isFinite(price) || price < 1) {
+      return res.status(400).json({ ok: false, error: "name, category, and price (at least 1 PHP) are required." });
     }
     let id = b.id ? String(b.id).slice(0, 48) : slugify(name);
     const existing = await pool.query(`SELECT id FROM products WHERE id = $1`, [id]);
@@ -230,14 +236,14 @@ app.put("/api/admin/products/:id", async (req, res) => {
     const b = req.body || {};
     const name = String(b.name || "").trim().slice(0, 80);
     const category = String(b.category || "").trim().slice(0, 40);
-    const price = Math.round(Number(b.price));
+    const price = parsePrice(b.price);
     const description = String(b.description || "").trim().slice(0, 500);
     const requiresBuild = Boolean(b.requiresBuild);
     const active = b.active !== false;
-    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Math.round(Number(b.sortOrder)) : 0;
+    const sortOrder = parsePrice(b.sortOrder);
     const tags = Array.isArray(b.tags) ? b.tags.map((t) => String(t).slice(0, 30)).slice(0, 20) : [];
-    if (!name || !category || !Number.isFinite(price) || price < 0) {
-      return res.status(400).json({ ok: false, error: "name, category, and valid price are required." });
+    if (!name || !category || !Number.isFinite(price) || price < 1) {
+      return res.status(400).json({ ok: false, error: "name, category, and price (at least 1 PHP) are required." });
     }
     const result = await pool.query(
       `UPDATE products SET name=$1, price=$2, category=$3, description=$4, tags=$5::jsonb,
@@ -294,7 +300,7 @@ app.post("/api/order", async (req, res) => {
     let notifyOk = false;
     let notifyDetail = null;
     if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-      const lines = items.map((i) => `• ${String(i.name || i.id).slice(0, 80)} × ${Number(i.qty) || 1}`).join("\n");
+      const lines = items.map((i) => `• ${String(i.name || i.id).slice(0, 80)} x ${Number(i.qty) || 1}`).join("\n");
       const text = [
         "New order — FLUX ROOT SERVICES", "",
         `Order ID: ${String(orderId).slice(0, 40)}`,
@@ -303,7 +309,7 @@ app.post("/api/order", async (req, res) => {
         build ? `Build: ${build}` : null,
         paymentRef ? `Ref: ${paymentRef}` : null,
         orderNote ? `Note: ${orderNote}` : null,
-        "", "Items:", lines || "—", "", `Received ${new Date().toISOString()}`
+        "", "Items:", lines || "-", "", `Received ${new Date().toISOString()}`
       ].filter((x) => x !== null).join("\n");
       try {
         const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
