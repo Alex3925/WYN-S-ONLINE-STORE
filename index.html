@@ -6,10 +6,24 @@
   <title>FLUX ROOT SERVICES</title>
   <meta name="description" content="FLUX ROOT SERVICES — Root, Unlock Bootloader, Firmware. Pay via Maya QR · Instant Telegram delivery." />
   <meta name="theme-color" content="#0a0908" />
+  <link rel="stylesheet" href="css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+  <style>
+    body{margin:0;background:#0a0908;color:#f5f0e8;font-family:system-ui,-apple-system,sans-serif}
+    .header{border-bottom:1px solid #221e1a}
+    .header-inner{display:flex;align-items:center;justify-content:space-between;height:60px;max-width:960px;margin:0 auto;padding:0 1.25rem}
+    .logo{font-weight:600;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:.5rem;text-decoration:none;color:#f5f0e8}
+    .logo span{color:#d4a853}
+    .logo-mark{width:26px;height:26px;border-radius:6px;background:#d4a853;color:#1a1508;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800}
+    .nav a{color:#8a7e70;text-decoration:none;padding:.4rem .75rem;font-size:.8rem}
+    .container{max-width:960px;margin:0 auto;padding:0 1.25rem}
+    .hero{text-align:center;padding:3rem 0 1.5rem}
+    .hero h1{font-size:1.6rem;letter-spacing:.04em;margin:0 0 .5rem}
+    .hero p{color:#8a7e70;margin:0}
+  </style>
 </head>
 <body>
   <header class="header">
@@ -36,7 +50,7 @@
         Pay via Maya QR · Instant Telegram delivery
       </div>
       <h1>FLUX ROOT SERVICES</h1>
-      <p>Root, unlock &amp; firmware services for Android devices — fast, reliable, professional.</p>
+      <p>Root, unlock & firmware services for Android devices — fast, reliable, professional.</p>
     </section>
 
     <div class="toolbar">
@@ -49,7 +63,9 @@
       <div class="categories" id="categories"></div>
     </div>
 
-    <div class="products" id="products"></div>
+    <div class="products" id="products">
+      <p style="color:#8a7e70;padding:2rem 0;text-align:center">Loading services…</p>
+    </div>
   </main>
 
   <footer class="footer">
