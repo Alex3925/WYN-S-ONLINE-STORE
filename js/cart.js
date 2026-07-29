@@ -14,21 +14,32 @@ function saveCart(cart) {
   updateCartBadge();
 }
 
+function resolveProduct(productId) {
+  if (typeof PRODUCTS === "undefined" || !Array.isArray(PRODUCTS)) return null;
+  return PRODUCTS.find((x) => x.id === productId) || null;
+}
+
 function addToCart(productId, qty = 1) {
+  const p = resolveProduct(productId);
+  const price = p ? Number(p.price) || 0 : 0;
+  const name = p ? p.name : productId;
   const cart = getCart();
   const existing = cart.find((i) => i.id === productId);
   if (existing) {
     existing.qty += qty;
+    if (p) {
+      existing.price = price;
+      existing.name = name;
+    }
   } else {
-    cart.push({ id: productId, qty });
+    cart.push({ id: productId, qty, name, price });
   }
   saveCart(cart);
   showToast("Added to cart");
 }
 
 function removeFromCart(productId) {
-  let cart = getCart().filter((i) => i.id !== productId);
-  saveCart(cart);
+  saveCart(getCart().filter((i) => i.id !== productId));
 }
 
 function setQty(productId, qty) {
@@ -48,12 +59,39 @@ function clearCart() {
   updateCartBadge();
 }
 
-function getCartTotal() {
+/** Sync name/price from catalog into cart lines (fixes ₱0 after product load). */
+function syncCartPrices() {
+  if (typeof PRODUCTS === "undefined" || !PRODUCTS.length) return;
   const cart = getCart();
-  return cart.reduce((sum, item) => {
+  let changed = false;
+  for (const item of cart) {
     const p = PRODUCTS.find((x) => x.id === item.id);
-    return sum + (p ? p.price * item.qty : 0);
-  }, 0);
+    if (p) {
+      const price = Number(p.price) || 0;
+      if (item.price !== price || item.name !== p.name) {
+        item.price = price;
+        item.name = p.name;
+        changed = true;
+      }
+    }
+  }
+  if (changed) saveCart(cart);
+}
+
+function linePrice(item) {
+  const p = resolveProduct(item.id);
+  if (p && Number(p.price) > 0) return Number(p.price);
+  return Number(item.price) || 0;
+}
+
+function lineName(item) {
+  const p = resolveProduct(item.id);
+  if (p && p.name) return p.name;
+  return item.name || item.id;
+}
+
+function getCartTotal() {
+  return getCart().reduce((sum, item) => sum + linePrice(item) * item.qty, 0);
 }
 
 function getCartCount() {
@@ -61,15 +99,13 @@ function getCartCount() {
 }
 
 function updateCartBadge() {
-  const el = document.querySelectorAll(".cart-count");
   const count = getCartCount();
-  el.forEach((badge) => {
+  document.querySelectorAll(".cart-count").forEach((badge) => {
     badge.textContent = count;
     badge.style.display = count > 0 ? "flex" : "none";
   });
 }
 
-// Orders
 function getOrders() {
   try {
     return JSON.parse(localStorage.getItem(ORDERS_KEY)) || [];
@@ -109,9 +145,8 @@ function showToast(msg) {
   }
   toast.textContent = msg;
   toast.classList.add("show");
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.remove("show"), 2200);
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
-// Init badge on load
 document.addEventListener("DOMContentLoaded", updateCartBadge);
