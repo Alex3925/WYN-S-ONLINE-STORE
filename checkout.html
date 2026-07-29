@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Checkout — FLUX ROOT SERVICES</title>
   <meta name="theme-color" content="#0a0908" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -47,109 +44,100 @@
     const MAYA_QR_SRC = "assets/maya-qr.png";
 
     function cartNeedsBuild() {
-      return getCart().some((item) => {
-        const p = PRODUCTS.find((x) => x.id === item.id);
+      return getCart().some(function (item) {
+        var p = typeof PRODUCTS !== "undefined" && PRODUCTS.find(function (x) { return x.id === item.id; });
         return p && p.requiresBuild;
       });
     }
 
     function renderCheckout() {
-      const wrap = document.getElementById("checkout-content");
-      const cart = getCart();
+      var wrap = document.getElementById("checkout-content");
+      var cart = getCart();
 
       if (cart.length === 0) {
-        wrap.innerHTML = `
-          <div class="empty">
-            <div class="empty-icon">—</div>
-            <h3>Nothing to checkout</h3>
-            <p>Your cart is empty.</p>
-            <a href="index.html" class="btn" style="margin-top:1.15rem;display:inline-flex">Browse Services</a>
-          </div>`;
+        wrap.innerHTML =
+          '<div class="empty"><div class="empty-icon">—</div><h3>Nothing to checkout</h3>' +
+          '<p>Your cart is empty.</p>' +
+          '<a href="index.html" class="btn" style="margin-top:1.15rem;display:inline-flex">Browse Services</a></div>';
         return;
       }
 
-      const total = getCartTotal();
-      const needsBuild = cartNeedsBuild();
-      const itemsList = cart
-        .map((item) => {
-          const p = PRODUCTS.find((x) => x.id === item.id);
-          if (!p) return "";
-          return `<li><span>${p.name} × ${item.qty}</span><span>₱${(p.price * item.qty).toLocaleString()}</span></li>`;
+      var total = getCartTotal();
+      var needsBuild = cartNeedsBuild();
+      var itemsList = cart
+        .map(function (item) {
+          var name = typeof lineName === "function" ? lineName(item) : (item.name || item.id);
+          var price = typeof linePrice === "function" ? linePrice(item) : (Number(item.price) || 0);
+          return "<li><span>" + name + " × " + item.qty + "</span><span>₱" + (price * item.qty).toLocaleString() + "</span></li>";
         })
         .join("");
 
-      wrap.innerHTML = `
-        <div class="checkout-grid">
-          <div class="checkout-card">
-            <h3><span class="step-num">1</span> Scan &amp; Pay with Maya</h3>
-            <div class="qr-box">
-              <img id="maya-qr" src="${MAYA_QR_SRC}" alt="Maya QR Code"
-                   onerror="this.style.display='none'; document.getElementById('qr-fallback').style.display='flex';" />
-              <div id="qr-fallback" class="qr-placeholder" style="display:none">
-                Place your Maya QR at<br><code>assets/maya-qr.png</code>
-              </div>
-              <p class="qr-amount">₱${total.toLocaleString()}</p>
-            </div>
-            <p class="qr-note">Open Maya → Scan QR → Pay the exact amount.</p>
-          </div>
-
-          <div class="checkout-card">
-            <h3><span class="step-num">2</span> Your details</h3>
-            <ul class="order-items">${itemsList}</ul>
-            <div class="cart-summary-row total" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
-              <span>Total</span>
-              <span>₱${total.toLocaleString()} PHP</span>
-            </div>
-
-            <div style="margin-top:1.25rem">
-              <div class="form-group">
-                <label for="tgUser">Telegram username <span class="req">*</span></label>
-                <input type="text" id="tgUser" placeholder="@username" autocomplete="off" />
-                <div class="form-error" id="err-tgUser">Required</div>
-              </div>
-              <div class="form-group">
-                <label for="device">Device name <span class="req">*</span></label>
-                <input type="text" id="device" placeholder="e.g. Infinix Hot 40, Tecno Spark 20" />
-                <div class="form-error" id="err-device">Required</div>
-              </div>
-              <div class="form-group" id="build-group" style="${needsBuild ? "" : "display:none"}">
-                <label for="build">Build number <span class="req">*</span></label>
-                <input type="text" id="build" placeholder="Settings → About phone → Build number" />
-                <div class="form-error" id="err-build">Required for Root / Transsion firmware</div>
-              </div>
-              <div class="form-group">
-                <label for="ref">Payment reference (optional)</label>
-                <input type="text" id="ref" placeholder="Maya ref or last 4 digits" />
-              </div>
-              <div class="form-group">
-                <label for="note">Extra notes (optional)</label>
-                <textarea id="note" rows="2" placeholder="Anything else we should know"></textarea>
-              </div>
-              <button class="btn btn-lg btn-block" id="confirm-btn">I've Paid — Create Order</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="checkout-help">
-          <h3>After payment</h3>
-          <p>Confirm your order and we receive it on Telegram automatically.</p>
-          <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-outline btn-block">Message @alexdevyuhhh</a>
-        </div>
-      `;
+      wrap.innerHTML =
+        '<div class="checkout-grid">' +
+          '<div class="checkout-card">' +
+            '<h3><span class="step-num">1</span> Scan & Pay with Maya</h3>' +
+            '<div class="qr-box">' +
+              '<img id="maya-qr" src="' + MAYA_QR_SRC + '" alt="Maya QR Code" ' +
+                   'onerror="this.style.display=\'none\';var f=document.getElementById(\'qr-fallback\');if(f)f.style.display=\'flex\';" />' +
+              '<div id="qr-fallback" class="qr-placeholder" style="display:none">Place your Maya QR at<br><code>assets/maya-qr.png</code></div>' +
+              '<p class="qr-amount">₱' + total.toLocaleString() + '</p>' +
+            '</div>' +
+            '<p class="qr-note">Open Maya → Scan QR → Pay the exact amount.</p>' +
+          '</div>' +
+          '<div class="checkout-card">' +
+            '<h3><span class="step-num">2</span> Your details</h3>' +
+            '<ul class="order-items">' + itemsList + '</ul>' +
+            '<div class="cart-summary-row total" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">' +
+              '<span>Total</span><span>₱' + total.toLocaleString() + ' PHP</span>' +
+            '</div>' +
+            '<div style="margin-top:1.25rem">' +
+              '<div class="form-group">' +
+                '<label for="tgUser">Telegram username <span class="req">*</span></label>' +
+                '<input type="text" id="tgUser" placeholder="@username" autocomplete="off" />' +
+                '<div class="form-error" id="err-tgUser">Required</div>' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label for="device">Device name <span class="req">*</span></label>' +
+                '<input type="text" id="device" placeholder="e.g. Infinix Hot 40, Tecno Spark 20" />' +
+                '<div class="form-error" id="err-device">Required</div>' +
+              '</div>' +
+              '<div class="form-group" id="build-group" style="' + (needsBuild ? "" : "display:none") + '">' +
+                '<label for="build">Build number <span class="req">*</span></label>' +
+                '<input type="text" id="build" placeholder="Settings → About phone → Build number" />' +
+                '<div class="form-error" id="err-build">Required for Root / Transsion firmware</div>' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label for="ref">Payment reference (optional)</label>' +
+                '<input type="text" id="ref" placeholder="Maya ref or last 4 digits" />' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label for="note">Extra notes (optional)</label>' +
+                '<textarea id="note" rows="2" placeholder="Anything else we should know"></textarea>' +
+              '</div>' +
+              '<button class="btn btn-lg btn-block" id="confirm-btn">I\'ve Paid — Create Order</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="checkout-help">' +
+          '<h3>After payment</h3>' +
+          '<p>Confirm your order and we receive it on Telegram automatically.</p>' +
+          '<a href="' + TELEGRAM_LINK + '" target="_blank" rel="noopener" class="btn btn-outline btn-block">Message @alexdevyuhhh</a>' +
+        '</div>';
 
       document.getElementById("confirm-btn").addEventListener("click", placeOrder);
     }
 
     function validate() {
-      let ok = true;
-      const tgUser = document.getElementById("tgUser");
-      const device = document.getElementById("device");
-      const build = document.getElementById("build");
-      const needsBuild = cartNeedsBuild();
+      var ok = true;
+      var tgUser = document.getElementById("tgUser");
+      var device = document.getElementById("device");
+      var build = document.getElementById("build");
+      var needsBuild = cartNeedsBuild();
 
-      [["tgUser", tgUser], ["device", device]].forEach(([id, el]) => {
-        const err = document.getElementById("err-" + id);
-        const val = el.value.trim();
+      [["tgUser", tgUser], ["device", device]].forEach(function (pair) {
+        var id = pair[0], el = pair[1];
+        var err = document.getElementById("err-" + id);
+        var val = el.value.trim();
         if (!val) {
           el.classList.add("invalid");
           err.classList.add("show");
@@ -161,112 +149,113 @@
       });
 
       if (needsBuild) {
-        const err = document.getElementById("err-build");
+        var errB = document.getElementById("err-build");
         if (!build.value.trim()) {
           build.classList.add("invalid");
-          err.classList.add("show");
+          errB.classList.add("show");
           ok = false;
         } else {
           build.classList.remove("invalid");
-          err.classList.remove("show");
+          errB.classList.remove("show");
         }
       }
-
       return ok;
     }
 
     async function placeOrder() {
       if (!validate()) return;
 
-      const btn = document.getElementById("confirm-btn");
+      var btn = document.getElementById("confirm-btn");
       if (btn) {
         btn.disabled = true;
         btn.textContent = "Sending...";
       }
 
-      const cart = getCart();
+      var cart = getCart();
       if (cart.length === 0) return;
 
-      const total = getCartTotal();
-      const telegramUsername = document.getElementById("tgUser").value.trim().replace(/^@/, "");
-      const deviceName = document.getElementById("device").value.trim();
-      const buildNumber = (document.getElementById("build")?.value || "").trim() || null;
-      const ref = document.getElementById("ref").value.trim();
-      const note = document.getElementById("note").value.trim();
-      const orderId = generateOrderId();
+      if (typeof syncCartPrices === "function") syncCartPrices();
+      var total = getCartTotal();
+      var telegramUsername = document.getElementById("tgUser").value.trim().replace(/^@/, "");
+      var deviceName = document.getElementById("device").value.trim();
+      var buildEl = document.getElementById("build");
+      var buildNumber = (buildEl && buildEl.value ? buildEl.value.trim() : "") || null;
+      var ref = document.getElementById("ref").value.trim();
+      var note = document.getElementById("note").value.trim();
+      var orderId = generateOrderId();
 
-      const items = cart.map((item) => {
-        const p = PRODUCTS.find((x) => x.id === item.id);
-        return {
-          id: item.id,
-          name: p ? p.name : item.id,
-          price: p ? p.price : 0,
-          qty: item.qty
-        };
+      var items = cart.map(function (item) {
+        var name = typeof lineName === "function" ? lineName(item) : (item.name || item.id);
+        var price = typeof linePrice === "function" ? linePrice(item) : (Number(item.price) || 0);
+        return { id: item.id, name: name, price: price, qty: item.qty };
       });
 
-      const order = {
+      var order = {
         id: orderId,
         date: new Date().toISOString(),
-        items,
-        total,
-        telegramUsername,
-        deviceName,
-        buildNumber,
+        items: items,
+        total: total,
+        telegramUsername: telegramUsername,
+        deviceName: deviceName,
+        buildNumber: buildNumber,
         ref: ref || null,
         note: note || null,
         status: "pending"
       };
 
-      let notifyOk = false;
-      let notifyDetail = "";
+      var notifyOk = false;
+      var notifyDetail = "";
       try {
-        const res = await fetch("/api/order", {
+        var res = await fetch("/api/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            orderId,
-            total,
-            items,
-            telegramUsername,
-            deviceName,
-            buildNumber,
+            orderId: orderId,
+            total: total,
+            items: items,
+            telegramUsername: telegramUsername,
+            deviceName: deviceName,
+            buildNumber: buildNumber,
             ref: ref || null,
             note: note || null
           })
         });
-        const data = await res.json().catch(() => ({}));
-        notifyOk = res.ok && data.ok;
-        if (!notifyOk) notifyDetail = data.error || data.detail || ("HTTP " + res.status);
+        var data = await res.json().catch(function () { return {}; });
+        notifyOk = res.ok && data.ok && data.notified;
+        if (!(res.ok && data.ok)) notifyDetail = data.error || data.detail || ("HTTP " + res.status);
+        else if (!data.notified) notifyDetail = data.detail || "Telegram not sent";
       } catch (e) {
-        console.warn("Telegram notify failed:", e);
+        console.warn("Order notify failed:", e);
         notifyDetail = "Network / server offline";
       }
 
       saveOrder(order);
       clearCart();
 
-      const notifyMsg = notifyOk
-        ? "Order sent to our Telegram. We’ll process it shortly."
+      var notifyMsg = notifyOk
+        ? "Order sent to our Telegram. We will process it shortly."
         : "Order saved on this device. Message us on Telegram with your Order ID. (" + notifyDetail + ")";
 
-      document.getElementById("checkout-content").innerHTML = `
-        <div class="success-box">
-          <div class="success-icon">✓</div>
-          <h3>Order created</h3>
-          <div class="order-id-display">${orderId}</div>
-          <p>${notifyMsg}</p>
-          <div class="success-actions">
-            <a href="${TELEGRAM_LINK}" target="_blank" rel="noopener" class="btn btn-lg btn-block">Message @alexdevyuhhh</a>
-            <a href="orders.html" class="btn btn-outline btn-block">View Order History</a>
-            <a href="index.html" class="btn btn-outline btn-block">Back to Shop</a>
-          </div>
-        </div>
-      `;
+      document.getElementById("checkout-content").innerHTML =
+        '<div class="success-box">' +
+          '<div class="success-icon">✓</div>' +
+          '<h3>Order created</h3>' +
+          '<div class="order-id-display">' + orderId + '</div>' +
+          '<p>' + notifyMsg + '</p>' +
+          '<div class="success-actions">' +
+            '<a href="' + TELEGRAM_LINK + '" target="_blank" rel="noopener" class="btn btn-lg btn-block">Message @alexdevyuhhh</a>' +
+            '<a href="orders.html" class="btn btn-outline btn-block">View Order History</a>' +
+            '<a href="index.html" class="btn btn-outline btn-block">Back to Shop</a>' +
+          '</div>' +
+        '</div>';
       showToast(notifyOk ? "Sent to Telegram" : "Order saved");
     }
 
-    document.addEventListener("DOMContentLoaded", renderCheckout);
+    document.addEventListener("DOMContentLoaded", async function () {
+      if (typeof loadProducts === "function") await loadProducts();
+      if (typeof syncCartPrices === "function") syncCartPrices();
+      renderCheckout();
+    });
   </script>
 </body>
 </html>
